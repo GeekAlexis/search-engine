@@ -12,7 +12,7 @@ function Record(props) {
   const { data } = props;
 
   return (
-    <Card sx={{ maxWidth: "50%" }} style={{ boxShadow: "none" }}>
+    <Card style={{ boxShadow: "none" }}>
       <CardContent>
         <Typography display="inline" sx={{ mb: 1.5 }}>
           {data.baseUrl}&nbsp;
@@ -23,6 +23,7 @@ function Record(props) {
         <br />
         <Link
           href={data.url}
+          style={{ color: "#1a0dab" }}
           variant="h5"
           underline="hover"
           target="_blank"
