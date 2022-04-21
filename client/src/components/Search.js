@@ -5,6 +5,7 @@ import InputBase from "@mui/material/InputBase";
 import IconButton from "@mui/material/IconButton";
 import SearchIcon from "@mui/icons-material/Search";
 import PropTypes from "prop-types";
+import "../styles/Search.css";
 
 function Search(props) {
   const [query, setQuery] = useState("");
@@ -30,21 +31,28 @@ function Search(props) {
   }
 
   return (
-    <Paper
-      component="form"
-      sx={{ p: "2px 4px", display: "flex", alignItems: "center", width: 400 }}
-    >
-      <InputBase
-        sx={{ ml: 1, flex: 1 }}
-        placeholder="Search"
-        onChange={handleChange}
-        onKeyDown={handleEnter}
-        defaultValue={q}
-      />
-      <IconButton type="submit" sx={{ p: "10px" }} onClick={handleSearch}>
-        <SearchIcon />
-      </IconButton>
-    </Paper>
+    <div className="search">
+      <Paper
+        component="form"
+        sx={{
+          p: "2px 4px",
+          display: "flex",
+          alignItems: "center",
+          width: 500,
+        }}
+      >
+        <InputBase
+          sx={{ ml: 1, flex: 1 }}
+          placeholder="Search"
+          onChange={handleChange}
+          onKeyDown={handleEnter}
+          defaultValue={q}
+        />
+        <IconButton type="submit" sx={{ p: "10px" }} onClick={handleSearch}>
+          <SearchIcon />
+        </IconButton>
+      </Paper>
+    </div>
   );
 }
 

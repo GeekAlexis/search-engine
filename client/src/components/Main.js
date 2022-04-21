@@ -6,6 +6,7 @@ import Grid from "@mui/material/Grid";
 import Search from "./Search";
 import Results from "./Results";
 import Record from "./Record";
+import "../styles/Main.css";
 
 const record = {
   url: "https://en.wikipedia.org/wiki/Search_engine",
@@ -23,16 +24,25 @@ function Main() {
   const q = searchParams.get("q");
 
   return (
-    <Grid container spacing={2}>
-      <Grid item xs={8}>
-        <Search q={q} />
+    <div className="main">
+      <Grid container spacing={2}>
+        <Grid className="logo" item xs={1}>
+          <a href="/">
+            <img src="/logo.png" alt="logo" />
+          </a>
+        </Grid>
+        <Grid item xs={8}>
+          <Search q={q} />
+        </Grid>
+        <Grid item xs={3}></Grid>
       </Grid>
-      <Grid item xs={4}></Grid>
-      <Grid item xs={6}>
-        <Results data={data} />
+      <Grid container spacing={2}>
+        <Grid className="results" item xs={6}>
+          <Results data={data} />
+        </Grid>
+        <Grid item xs={6}></Grid>
       </Grid>
-      <Grid item xs={6}></Grid>
-    </Grid>
+    </div>
   );
 }
 

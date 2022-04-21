@@ -1,10 +1,18 @@
-import React, { useState, useEffect } from 'react';
-import Search from './Search';
+import React, { useState, useEffect } from "react";
+import Search from "./Search";
+import "../styles/Index.css";
 
 function Index() {
-    return (
-        <Search/>
-    )
+  return (
+    <>
+      <div className="index">
+        <div className="logo">
+          <img src="/logo.png" alt="logo" />
+        </div>
+        <Search />
+      </div>
+    </>
+  );
 }
 
 export default Index;
