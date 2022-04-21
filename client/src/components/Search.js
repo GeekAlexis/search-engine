@@ -4,10 +4,12 @@ import Paper from "@mui/material/Paper";
 import InputBase from "@mui/material/InputBase";
 import IconButton from "@mui/material/IconButton";
 import SearchIcon from "@mui/icons-material/Search";
+import PropTypes from "prop-types";
 
-function Search() {
+function Search(props) {
   const [query, setQuery] = useState("");
   const navigate = useNavigate();
+  const { q } = props;
 
   function handleChange(e) {
     setQuery(e.target.value);
@@ -37,6 +39,7 @@ function Search() {
         placeholder="Search"
         onChange={handleChange}
         onKeyDown={handleEnter}
+        defaultValue={q}
       />
       <IconButton type="submit" sx={{ p: "10px" }} onClick={handleSearch}>
         <SearchIcon />
@@ -44,5 +47,9 @@ function Search() {
     </Paper>
   );
 }
+
+Search.propTypes = {
+  q: PropTypes.string,
+};
 
 export default Search;
