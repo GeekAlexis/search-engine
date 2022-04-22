@@ -6,43 +6,47 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.PreparedStatement;
 
 public class StorageImpl implements StorageInterface {
 
     private Connection dbConn;
-    private int currId ;
 
     public StorageImpl(Connection dbConn){
         this.dbConn = dbConn;
-        this.currId = getCurrIdFromFile();
     }
 
     @Override
     public int getCorpusSize() {
+        //TODO
         return 0;
     }
 
     @Override
-    public int addDocument(String url, String content) {
-        Statement stmt = null;
+    public void addDocument(String url, String content) {
+//        Statement stmt = null;
         try {
             long crawledOn = System.currentTimeMillis();
-            byte[] contentBytes = content.getBytes();
-            stmt = dbConn.createStatement();
-            int id = currId;
-            currId += 1;
-            String sql = "INSERT INTO \"Document\" (id, url, content, lastcrawl) " +
-                    "VALUES (" + id + ", '" + url + "', '" + contentBytes + "', " +  crawledOn + ");";
-            stmt.executeUpdate(sql);
+//            byte[] contentBytes = content.getBytes();
+//            stmt = dbConn.createStatement();
+            String stm = "INSERT INTO \"Document\" (url, content, crawled_on) " +
+                    "VALUES (?,?,?);";
+            PreparedStatement pst = dbConn.prepareStatement(stm);
+            pst.setString(1, url);
+            pst.setBytes(2, content.getBytes());
+            pst.setLong(3, crawledOn);
+            pst.executeUpdate();
+
+
+
+//            stmt.executeUpdate(sql);
 
             System.out.println("adding url: " + url);
 
-            stmt.close();
-            return id;
+            pst.close();
         } catch (SQLException e) {
             e.printStackTrace();
         }
-        return 0;
     }
 
     @Override
@@ -70,11 +74,11 @@ public class StorageImpl implements StorageInterface {
         Statement stmt = null;
         try {
             stmt = dbConn.createStatement();
-            String sql = "SELECT lastcrawl FROM \"Document\" WHERE url = '" + url + "';";
+            String sql = "SELECT crawled_on FROM \"Document\" WHERE url = '" + url + "';";
 
             ResultSet rs = stmt.executeQuery(sql);
             while (rs.next()) {
-                BigDecimal crawledOn = rs.getBigDecimal("lastcrawl");
+                BigDecimal crawledOn = rs.getBigDecimal("crawled_on");
                 return crawledOn.longValue();
             }
             stmt.close();
@@ -111,8 +115,6 @@ public class StorageImpl implements StorageInterface {
 
     @Override
     public void close() {
-        currId += 1;
-        saveCurrIdToFile(currId);
         try {
             dbConn.close();
         } catch (SQLException e) {
@@ -120,33 +122,4 @@ public class StorageImpl implements StorageInterface {
         }
     }
 
-
-    // Retrieve current Id from saved file dbId.txt
-    public int getCurrIdFromFile(){
-        int id = 0;
-        BufferedReader reader;
-        try {
-            reader = new BufferedReader(new FileReader("./dbId.txt"));
-            String line = reader.readLine();
-            String idStr = line.split(":")[1];
-            id = Integer.valueOf(idStr);
-            reader.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        return id;
-    }
-
-    // Save current Id to file dbId.txt
-    public void saveCurrIdToFile(int id){
-        System.out.println("saving current id");
-        try {
-            PrintWriter writer = new PrintWriter(new FileWriter("./dbId.txt"));
-            writer.println("id:" + id);
-            writer.close();
-
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
 }

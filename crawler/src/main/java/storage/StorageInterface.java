@@ -8,9 +8,9 @@ public interface StorageInterface {
     public int getCorpusSize();
 
     /**
-     * Add a new document, getting its ID
+     * Add a new document
      */
-    public int addDocument(String url, String documentContents);
+    public void addDocument(String url, String documentContents);
 
     /**
      * Retrieves a document's contents by URL
