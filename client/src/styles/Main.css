@@ -21,6 +21,16 @@
   margin-left: -5px;
 }
 
+
+.main .options .MuiTabs-flexContainer {
+  margin-left: 100px;
+  
+}
+
+.main .options button {
+    min-height: 20px;
+}
+
 .main .results {
-  margin-left: 80px;
+  margin-left: 60px;
 }
