@@ -64,6 +64,7 @@ function Search(props) {
         }}
       >
         <Autocomplete
+          freeSolo
           PopperComponent={CustomPopper}
           filterOptions={filterOptions}
           options={topQueries}
