@@ -34,7 +34,6 @@ function Search(props) {
   };
 
   function handleChange(e, value) {
-    console.log(e.target.value);
     setQuery(e.target.value);
   }
 
@@ -65,6 +64,7 @@ function Search(props) {
       >
         <Autocomplete
           freeSolo
+          defaultValue={q}
           PopperComponent={CustomPopper}
           filterOptions={filterOptions}
           options={topQueries}
@@ -77,7 +77,6 @@ function Search(props) {
               placeholder="Search"
               onChange={handleChange}
               onKeyDown={handleEnter}
-              defaultValue={q}
             />
           )}
         />
