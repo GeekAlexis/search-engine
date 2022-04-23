@@ -1,18 +1,40 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Paper from "@mui/material/Paper";
+import Popper from "@mui/material/Popper";
 import InputBase from "@mui/material/InputBase";
 import IconButton from "@mui/material/IconButton";
 import SearchIcon from "@mui/icons-material/Search";
+import Autocomplete, { createFilterOptions } from "@mui/material/Autocomplete";
 import PropTypes from "prop-types";
 import "../styles/Search.css";
+import { topQueries } from "../data/topQueries";
 
 function Search(props) {
   const [query, setQuery] = useState("");
   const navigate = useNavigate();
   const { q } = props;
 
-  function handleChange(e) {
+  const filterOptions = createFilterOptions({
+    matchFrom: "start",
+    limit: 10,
+  });
+
+  const CustomPopper = function (props) {
+    return (
+      <Popper
+        {...props}
+        style={{
+          width: "484px",
+          paddingTop: "10px",
+        }}
+        placement="bottom-start"
+      />
+    );
+  };
+
+  function handleChange(e, value) {
+    console.log(e.target.value);
     setQuery(e.target.value);
   }
 
@@ -41,12 +63,22 @@ function Search(props) {
           width: 500,
         }}
       >
-        <InputBase
-          sx={{ ml: 1, flex: 1 }}
-          placeholder="Search"
-          onChange={handleChange}
-          onKeyDown={handleEnter}
-          defaultValue={q}
+        <Autocomplete
+          PopperComponent={CustomPopper}
+          filterOptions={filterOptions}
+          options={topQueries}
+          style={{ width: 600 }}
+          renderInput={(params) => (
+            <InputBase
+              ref={params.InputProps.ref}
+              inputProps={params.inputProps}
+              sx={{ ml: 1, flex: 1 }}
+              placeholder="Search"
+              onChange={handleChange}
+              onKeyDown={handleEnter}
+              defaultValue={q}
+            />
+          )}
         />
         <IconButton type="submit" sx={{ p: "10px" }} onClick={handleSearch}>
           <SearchIcon />
