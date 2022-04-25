@@ -28,9 +28,9 @@ public interface StorageInterface {
     public void close();
 
     /**
-     * Check if url is seen
+     * Check if content is seen
      */
-    public boolean checkSeen(String content);
+    public boolean checkSeenContent(String content);
 
 	
 }

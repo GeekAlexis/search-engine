@@ -110,7 +110,7 @@ public class Crawler implements CrawlMaster {
 
 		cluster.submitTopology("test", config,
         		builder.createTopology());
-        Thread.sleep(30000);
+        Thread.sleep(500000);
         cluster.killTopology("test");
         cluster.shutdown();
 

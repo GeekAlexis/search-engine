@@ -13,6 +13,7 @@ import java.util.ArrayList;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.Iterator;
 
 // Spout for url queue
 public class URLSpout implements IRichSpout{
@@ -22,7 +23,7 @@ public class URLSpout implements IRichSpout{
 	String executorId = UUID.randomUUID().toString();
 	SpoutOutputCollector collector;
 	
-	private int maxCount = 1000;
+	private int maxCount = 1000000;
 	private static int currCount = 0;
 	
 	static ConcurrentLinkedQueue<String> urlQueue;
@@ -41,7 +42,6 @@ public class URLSpout implements IRichSpout{
 	public void open(Map<String, String> config, TopologyContext topo, SpoutOutputCollector collector) {
 		this.collector = collector;
 		URLSpout.urlQueue = new ConcurrentLinkedQueue<>();
-//		this.maxCount = Crawler.getMaxCount();
 		this.currCount = 0;
 		ArrayList<String> seedUrls = readQueueFromFile();
 		urlQueue.addAll(seedUrls);
@@ -61,6 +61,9 @@ public class URLSpout implements IRichSpout{
 			log.debug(getExecutorId() + " emitting " + url);
 			this.collector.emit(new Values<Object>(url));
 			currCount += 1;
+//			if (currCount % 10000 == 0){
+//				System.out.println("currCount: " + currCount);
+//			}
 		}
 		Thread.yield();
 		
@@ -86,20 +89,34 @@ public class URLSpout implements IRichSpout{
 		currCount -= 1;
 	}
 
-	// Write remaining urls in the queue to file
+	// Write remaining urls in the queue to file (only first 100,000)
 	public void saveQueueToFile(){
 		System.out.println("saving queue");
 		try {
 			PrintWriter writer = new PrintWriter(new FileWriter("./urls.txt"));
-			for (String url: urlQueue){
-//				System.out.println(url);
-				writer.println(url);
+			int size = urlQueue.size();
+			if (size > 100000){
+				size = 100000;
 			}
+
+			Iterator iterator = urlQueue.iterator();
+			int idx = 0;
+			while (iterator.hasNext() && idx < size) {
+				writer.println(iterator.next());
+				idx = idx + 1;
+//				System.out.println(iterator.next());
+			}
+
+//			for (String url: urlQueue){
+////				System.out.println(url);
+//				writer.println(url);
+//			}
 			writer.close();
 
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
+		System.out.println("done saving queue");
 	}
 
 	public ArrayList<String> readQueueFromFile(){
@@ -124,8 +141,6 @@ public class URLSpout implements IRichSpout{
 		return urls;
 
 	}
-	
-	
-	
+
 
 }

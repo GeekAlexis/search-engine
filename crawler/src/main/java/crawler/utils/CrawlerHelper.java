@@ -95,23 +95,41 @@ public class CrawlerHelper {
 	}
 	
 	// Check HEAD request type and size
-	public static boolean checkTypeSize(String type, Long length, String url, int maxFileSize) {
+	public static boolean checkValid(String url, int maxFileSize, HttpURLConnection conn) {
+		String type = conn.getContentType();
+		Long length = conn.getContentLengthLong();
+		String lang = conn.getHeaderField("Content-Language");
+
+		// Check type
+		if (type == null){
+			return false;
+		}
 		if (type.contains(";")){
 			type = type.split(";")[0];
 		}
-    	if (!type.equals("text/html") && !type.equals("text/xml") && !type.equals("application/xml") && !type.endsWith("+xml")) {
+    	if (!type.startsWith("text/html") && !type.startsWith("text/xml") && !type.startsWith("application/xml") && !type.endsWith("+xml")) {
 //			logger.info(url + ": illegal content type");
-			System.out.println(type);
+			System.out.println("type: " + type);
 			System.out.println(url + ": illegal content type");
 			return false;
 		}
+    	// Check size
 		if (length > ((long) maxFileSize * 1024 * 1024)) {
 //			logger.info(url + ": reached max size");
+			System.out.println("length: " + length);
+			System.out.println(url + ": reached max size");
 			return false;
 		} else if (length < 0) {
 //			logger.info(url + ": illegal size");
+			System.out.println(url + ": illegal size");
 			return false;
 		}
+		// Check language
+		if (lang != null && !lang.contains("en")){
+			System.out.println("not in english");
+			return false;
+		}
+
     	
     	return true;
     }

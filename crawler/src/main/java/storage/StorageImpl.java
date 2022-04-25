@@ -18,36 +18,68 @@ public class StorageImpl implements StorageInterface {
 
     @Override
     public int getCorpusSize() {
-        //TODO
+        Statement stmt = null;
+        try {
+            stmt = dbConn.createStatement();
+            String sql = "SELECT COUNT(*) AS num FROM \"Document\";";
+
+            ResultSet rs = stmt.executeQuery(sql);
+
+            while ( rs.next() ) {
+                int num = rs.getInt("num");
+                return num;
+            }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
         return 0;
     }
 
     @Override
     public void addDocument(String url, String content) {
-//        Statement stmt = null;
-        try {
-            long crawledOn = System.currentTimeMillis();
-//            byte[] contentBytes = content.getBytes();
-//            stmt = dbConn.createStatement();
-            String stm = "INSERT INTO \"Document\" (url, content, crawled_on) " +
-                    "VALUES (?,?,?);";
-            PreparedStatement pst = dbConn.prepareStatement(stm);
-            pst.setString(1, url);
-            pst.setBytes(2, content.getBytes());
-            pst.setLong(3, crawledOn);
-            pst.executeUpdate();
+        // if url not in db yet
+        if (getDocument(url) == null){
+            try {
+                long crawledOn = System.currentTimeMillis();
+                String stm = "INSERT INTO \"Document\" (url, content, crawled_on) " +
+                        "VALUES (?,?,?);";
+                PreparedStatement pst = dbConn.prepareStatement(stm);
+                pst.setString(1, url);
+                pst.setBytes(2, content.getBytes());
+                pst.setLong(3, crawledOn);
+                pst.executeUpdate();
 
+                System.out.println("adding url: " + url);
 
+                pst.close();
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
 
-//            stmt.executeUpdate(sql);
+            // update existing record
+        } else {
+            try {
+                long crawledOn = System.currentTimeMillis();
+                String stm = "UPDATE \"Document\" SET content = ?, crawled_on = ? WHERE url = ?";
 
-            System.out.println("adding url: " + url);
+                PreparedStatement pst = dbConn.prepareStatement(stm);
+                pst.setBytes(1, content.getBytes());
+                pst.setLong(2, crawledOn);
+                pst.setString(3, url);
+                pst.executeUpdate();
 
-            pst.close();
-        } catch (SQLException e) {
-            e.printStackTrace();
+                System.out.println("updating url: " + url);
+
+                pst.close();
+
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+
         }
     }
+
 
     @Override
     public String getDocument(String url) {
@@ -57,12 +89,20 @@ public class StorageImpl implements StorageInterface {
             String sql = "SELECT content FROM \"Document\" WHERE url = '" + url + "';";
 
             ResultSet rs = stmt.executeQuery(sql);
-            while (rs.next()) {
-                byte[] contentByte = rs.getBytes("content");
-                String content = new String(contentByte);
-                return content;
+
+            if (rs.next() == false){
+                // Result set is empty
+                stmt.close();
+                return null;
+            } else{
+                do {
+                    byte[] contentByte = rs.getBytes("content");
+                    String content = new String(contentByte);
+                    stmt.close();
+                    return content;
+                } while (rs.next());
             }
-            stmt.close();
+
         } catch (SQLException e) {
             e.printStackTrace();
         }
@@ -90,14 +130,17 @@ public class StorageImpl implements StorageInterface {
     }
 
     @Override
-    public boolean checkSeen(String content) {
-        Statement stmt = null;
+    public boolean checkSeenContent(String content) {
+        if (content == null){
+            return true;
+        }
         try {
-            byte[] contentBytes = content.getBytes();
-            stmt = dbConn.createStatement();
-            String sql = "SELECT COUNT(1) AS num FROM \"Document\" WHERE content = '" + contentBytes + "';";
+            String stm = "SELECT COUNT(1) AS num FROM \"Document\" WHERE content = ?;";
 
-            ResultSet rs = stmt.executeQuery(sql);
+            PreparedStatement pst = dbConn.prepareStatement(stm);
+            pst.setBytes(1, content.getBytes());
+
+            ResultSet rs = pst.executeQuery();
             while ( rs.next() ) {
                 int num = rs.getInt("num");
                 if (num != 0){
@@ -106,7 +149,7 @@ public class StorageImpl implements StorageInterface {
                     return false;
                 }
             }
-            stmt.close();
+            pst.close();
         } catch (SQLException e) {
             e.printStackTrace();
         }

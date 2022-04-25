@@ -28,42 +28,46 @@ public class RobotInfo {
 		try {
 			String line = reader.readLine();
 			while (line != null) {
+//				System.out.println(line);
 				if (line.equals("User-agent: *") || line.equals("user-agent: *") || line.equals("User-Agent: *")) {
 					line = reader.readLine();
-					while (line != null && !line.isBlank()){
+
+					while (line != null){
+//						System.out.println(line);
 						if (line.startsWith("Disallow: ")) {
 							disallowed.add(line.substring(10));
-						}
-						if (line.startsWith("Crawl-delay: ")){
+						} else if (line.startsWith("Crawl-delay: ")){
 							delay = Integer.parseInt(line.substring(13));
 //							delay = 0;
+						} else if (line.isBlank()){
+							return;
 						}
 						line = reader.readLine();
 					}
-					if (line == null){
-						break;
-					}
+//					if (line == null){
+//						break;
+//					}
 				} 
-				if (line.equals("User-agent: cis455crawler") || line.equals("user-agent: cis455crawler")
-						|| line.equals("User-Agent: cis455crawler")) {
-					disallowed.clear();
-					delay = 0;
-					line = reader.readLine();
-					if(line == null){
-						break;
-					}
-					while (line != null && !line.isBlank()){
-						if (line.startsWith("Disallow: ")) {
-							disallowed.add(line.substring(10));
-						}
-						if (line.startsWith("Crawl-delay: ")){
-							delay = Integer.parseInt(line.substring(13));
-//							delay = 0;
-						}
-						line = reader.readLine();
-					}
-					break;
-				} 
+//				if (line.equals("User-agent: cis455crawler") || line.equals("user-agent: cis455crawler")
+//						|| line.equals("User-Agent: cis455crawler")) {
+//					disallowed.clear();
+//					delay = 0;
+//					line = reader.readLine();
+//					if(line == null){
+//						break;
+//					}
+//					while (line != null && !line.isBlank()){
+//						if (line.startsWith("Disallow: ")) {
+//							disallowed.add(line.substring(10));
+//						}
+//						if (line.startsWith("Crawl-delay: ")){
+//							delay = Integer.parseInt(line.substring(13));
+////							delay = 0;
+//						}
+//						line = reader.readLine();
+//					}
+//					break;
+//				}
 				
 				line = reader.readLine();
 			}
@@ -72,6 +76,7 @@ public class RobotInfo {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+		System.out.println("done parsing robots.txt");
 	}
 	
 	// Determine if the path is allowed to crawl

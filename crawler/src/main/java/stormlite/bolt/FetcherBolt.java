@@ -110,12 +110,12 @@ public class FetcherBolt implements IRichBolt{
 
 			int responseCode = conn.getResponseCode();
 			if (responseCode == HttpURLConnection.HTTP_OK) { // success
-				String type = conn.getContentType();
-				Long length = conn.getContentLengthLong();
-				if (!CrawlerHelper.checkTypeSize(type, length, url, maxFileSize)) {
-					System.out.println(url + ": not valid type");
+				// Check if valid: type, size, language
+				if (!CrawlerHelper.checkValid(url, maxFileSize, conn)) {
+					System.out.println(url + ": not valid type/size/language");
 					return;
 				}
+				// Check if already in db
 				Long lastModified = conn.getLastModified();
 				if (db.getDocument(url) != null) {
 					// don't crawl but process
@@ -155,7 +155,7 @@ public class FetcherBolt implements IRichBolt{
 		robotMap.get(info.getHostName()).setLastCrawled();
 
 		// Check if have seen the content
-		if (db.checkSeen(html)) {
+		if (db.checkSeenContent(html)) {
 			logger.info(url + ": content seen");
 			System.out.println(url + ": content seen");
 			return;
