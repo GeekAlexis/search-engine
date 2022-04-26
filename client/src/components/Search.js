@@ -12,6 +12,7 @@ import { topQueries } from "../data/topQueries";
 
 function Search(props) {
   const [query, setQuery] = useState("");
+
   const navigate = useNavigate();
   const { q } = props;
 
@@ -51,6 +52,13 @@ function Search(props) {
     }
   }
 
+  function handleClick(e, value) {
+    setQuery(value);
+    if (value) {
+      navigate("/search?q=" + value);
+    }
+  }
+
   return (
     <div className="search">
       <Paper
@@ -67,8 +75,17 @@ function Search(props) {
           defaultValue={q}
           PopperComponent={CustomPopper}
           filterOptions={filterOptions}
+          onChange={handleClick}
           options={topQueries}
           style={{ width: 600 }}
+          renderOption={(props, option) => (
+            <li {...props}>
+              <IconButton>
+                <SearchIcon />
+              </IconButton>
+              {option}
+            </li>
+          )}
           renderInput={(params) => (
             <InputBase
               ref={params.InputProps.ref}
