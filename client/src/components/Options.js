@@ -8,6 +8,7 @@ import NewspaperIcon from "@mui/icons-material/Newspaper";
 import StoreIcon from "@mui/icons-material/Store";
 import Grid from "@mui/material/Grid";
 import Results from "./Results";
+import NewsPage from "./NewsPage";
 import PropTypes from "prop-types";
 
 function Options(props) {
@@ -51,7 +52,12 @@ function Options(props) {
         </Grid>
       </TabPanel>
       <TabPanel value={value} index={1}>
-        News
+        <Grid container spacing={2}>
+          <Grid className="news" item xs={6}>
+            <NewsPage />
+          </Grid>
+          <Grid item xs={6}></Grid>
+        </Grid>
       </TabPanel>
       <TabPanel value={value} index={2}>
         Shopping
