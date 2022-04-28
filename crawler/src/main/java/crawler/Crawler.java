@@ -92,8 +92,8 @@ public class Crawler implements CrawlMaster {
         TopologyBuilder builder = new TopologyBuilder();
 
         builder.setSpout(URL_SPOUT, spout, 1);
-        builder.setBolt(FETCHER_BOLT, fetcherBolt, 1).shuffleGrouping(URL_SPOUT);
-        builder.setBolt(EXTRACTOR_BOLT, extractorBolt, 1).shuffleGrouping(FETCHER_BOLT);
+        builder.setBolt(FETCHER_BOLT, fetcherBolt, 3).shuffleGrouping(URL_SPOUT);
+        builder.setBolt(EXTRACTOR_BOLT, extractorBolt, 3).shuffleGrouping(FETCHER_BOLT);
 
         LocalCluster cluster = new LocalCluster();
         Topology topo = builder.createTopology();
@@ -110,7 +110,7 @@ public class Crawler implements CrawlMaster {
 
 		cluster.submitTopology("test", config,
         		builder.createTopology());
-        Thread.sleep(500000);
+        Thread.sleep(800000);
         cluster.killTopology("test");
         cluster.shutdown();
 

@@ -34,6 +34,7 @@ public class CrawlerHelper {
 
 			conn.setRequestMethod("GET");
 			conn.addRequestProperty("User-Agent", "cis455crawler");
+			conn.setConnectTimeout(5000);
 			
 			int responseCode = conn.getResponseCode();
 			if (responseCode == HttpURLConnection.HTTP_OK) { // success
