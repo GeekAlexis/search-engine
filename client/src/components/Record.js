@@ -1,18 +1,18 @@
-import React, { useState, useEffect } from "react";
-import Box from "@mui/material/Box";
-import Card from "@mui/material/Card";
-import CardActions from "@mui/material/CardActions";
-import CardContent from "@mui/material/CardContent";
-import Button from "@mui/material/Button";
-import Typography from "@mui/material/Typography";
-import Link from "@mui/material/Link";
-import PropTypes from "prop-types";
+import React, { useState, useEffect } from 'react';
+import Box from '@mui/material/Box';
+import Card from '@mui/material/Card';
+import CardActions from '@mui/material/CardActions';
+import CardContent from '@mui/material/CardContent';
+import Button from '@mui/material/Button';
+import Typography from '@mui/material/Typography';
+import Link from '@mui/material/Link';
+import PropTypes from 'prop-types';
 
 function Record(props) {
   const { data } = props;
 
   return (
-    <Card style={{ boxShadow: "none" }}>
+    <Card style={{ boxShadow: 'none' }}>
       <CardContent>
         <Typography display="inline" sx={{ mb: 1.5 }}>
           {data.baseUrl}&nbsp;
@@ -23,7 +23,7 @@ function Record(props) {
         <br />
         <Link
           href={data.url}
-          style={{ color: "#1a0dab" }}
+          style={{ color: '#1a0dab' }}
           variant="h5"
           underline="hover"
           target="_blank"

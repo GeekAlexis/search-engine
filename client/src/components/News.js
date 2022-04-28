@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from "react";
-import Pagination from "@mui/material/Pagination";
-import LinearProgress from "@mui/material/LinearProgress";
-import Article from "./Article";
-import PropTypes from "prop-types";
-import getNews from "../apis/getNews";
+import React, { useState, useEffect } from 'react';
+import Pagination from '@mui/material/Pagination';
+import LinearProgress from '@mui/material/LinearProgress';
+import Article from './Article';
+import PropTypes from 'prop-types';
+import getNews from '../apis/getNews';
 
 function News(props) {
   const { query } = props;

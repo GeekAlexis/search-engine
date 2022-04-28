@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from "react";
-import Search from "./Search";
-import "../styles/Index.css";
+import React, { useState, useEffect } from 'react';
+import Search from './Search';
+import '../styles/Index.css';
 
 function Index() {
   return (

@@ -1,15 +1,15 @@
-import React, { useState, useEffect } from "react";
-import Pagination from "@mui/material/Pagination";
-import Record from "./Record";
-import PropTypes from "prop-types";
+import React, { useState, useEffect } from 'react';
+import Pagination from '@mui/material/Pagination';
+import Record from './Record';
+import PropTypes from 'prop-types';
 
 const record = {
-  url: "https://en.wikipedia.org/wiki/Search_engine",
-  baseUrl: "https://en.wikipedia.org",
-  path: "› wiki › Search_engine",
-  title: "Search engine - Wikipedia",
+  url: 'https://en.wikipedia.org/wiki/Search_engine',
+  baseUrl: 'https://en.wikipedia.org',
+  path: '› wiki › Search_engine',
+  title: 'Search engine - Wikipedia',
   excerpt:
-    "A search engine is a software system that is designed to carry out web searches. They search the World Wide Web in a systematic way for particular ...",
+    'A search engine is a software system that is designed to carry out web searches. They search the World Wide Web in a systematic way for particular ...',
 };
 
 const data = Array(100).fill(record);

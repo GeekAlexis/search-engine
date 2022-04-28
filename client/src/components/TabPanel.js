@@ -1,7 +1,7 @@
-import React from "react";
-import Typography from "@mui/material/Typography";
-import Box from "@mui/material/Box";
-import PropTypes from "prop-types";
+import React from 'react';
+import Typography from '@mui/material/Typography';
+import Box from '@mui/material/Box';
+import PropTypes from 'prop-types';
 
 function TabPanel(props) {
   const { children, value, index, ...other } = props;

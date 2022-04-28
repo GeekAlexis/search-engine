@@ -1,11 +1,11 @@
-import React from "react";
-import Card from "@mui/material/Card";
-import CardContent from "@mui/material/CardContent";
-import CardMedia from "@mui/material/CardMedia";
-import { CardActionArea } from "@mui/material";
-import Grid from "@mui/material/Grid";
-import Typography from "@mui/material/Typography";
-import PropTypes from "prop-types";
+import React from 'react';
+import Card from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
+import CardMedia from '@mui/material/CardMedia';
+import { CardActionArea } from '@mui/material';
+import Grid from '@mui/material/Grid';
+import Typography from '@mui/material/Typography';
+import PropTypes from 'prop-types';
 
 function Article(props) {
   const { data } = props;
@@ -20,7 +20,7 @@ function Article(props) {
       className="article"
       variant="outlined"
       sx={{ maxWidth: 600 }}
-      style={{ boxShadow: "none" }}
+      style={{ boxShadow: 'none' }}
     >
       <CardActionArea href={data.url} target="_blank">
         <Grid container spacing={0}>
@@ -40,7 +40,7 @@ function Article(props) {
               </Typography>
               <Typography variant="body" color="text.secondary">
                 {data.description.length > 140
-                  ? data.description.substring(0, 140) + "..."
+                  ? data.description.substring(0, 140) + '...'
                   : data.description}
               </Typography>
               <Typography
@@ -59,7 +59,7 @@ function Article(props) {
               image={
                 data.urlToImage
                   ? data.urlToImage
-                  : "https://upload.wikimedia.org/wikipedia/commons/thumb/d/da/Google_News_icon.svg/512px-Google_News_icon.svg.png"
+                  : 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/da/Google_News_icon.svg/512px-Google_News_icon.svg.png'
               }
             />
           </Grid>

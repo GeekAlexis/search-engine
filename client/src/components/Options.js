@@ -1,15 +1,15 @@
-import React, { useState, useEffect } from "react";
-import Tabs from "@mui/material/Tabs";
-import Tab from "@mui/material/Tab";
-import Box from "@mui/material/Box";
-import TabPanel from "./TabPanel";
-import SearchIcon from "@mui/icons-material/Search";
-import NewspaperIcon from "@mui/icons-material/Newspaper";
-import StoreIcon from "@mui/icons-material/Store";
-import Grid from "@mui/material/Grid";
-import Results from "./Results";
-import News from "./News";
-import PropTypes from "prop-types";
+import React, { useState, useEffect } from 'react';
+import Tabs from '@mui/material/Tabs';
+import Tab from '@mui/material/Tab';
+import Box from '@mui/material/Box';
+import TabPanel from './TabPanel';
+import SearchIcon from '@mui/icons-material/Search';
+import NewspaperIcon from '@mui/icons-material/Newspaper';
+import StoreIcon from '@mui/icons-material/Store';
+import Grid from '@mui/material/Grid';
+import Results from './Results';
+import News from './News';
+import PropTypes from 'prop-types';
 
 function Options(props) {
   const { q } = props;
@@ -20,8 +20,8 @@ function Options(props) {
   };
 
   return (
-    <Box sx={{ width: "100%" }}>
-      <Box sx={{ borderBottom: 1, borderColor: "divider" }}>
+    <Box sx={{ width: '100%' }}>
+      <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
         <Tabs value={value} onChange={handleChange}>
           <Tab
             icon={<SearchIcon />}

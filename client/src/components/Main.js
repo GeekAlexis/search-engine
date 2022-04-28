@@ -1,13 +1,13 @@
-import React, { useState, useEffect } from "react";
-import { useSearchParams } from "react-router-dom";
-import Grid from "@mui/material/Grid";
-import Search from "./Search";
-import Options from "./Options";
-import "../styles/Main.css";
+import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import Grid from '@mui/material/Grid';
+import Search from './Search';
+import Options from './Options';
+import '../styles/Main.css';
 
 function Main() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const q = searchParams.get("q");
+  const q = searchParams.get('q');
   console.log(q);
 
   return (
