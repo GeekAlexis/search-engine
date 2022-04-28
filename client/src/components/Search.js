@@ -40,21 +40,25 @@ function Search(props) {
 
   function handleEnter(e) {
     if (e.key === "Enter") {
+      e.preventDefault();
       if (query.length > 0) {
+        console.log("Enter pressed with query: ", query);
         navigate("/search?q=" + query);
       }
     }
   }
 
   function handleSearch() {
-    if (query.length > 0) {
+    e.preventDefault();
+    if (query) {
+      console.log("Search clicked with query: ", query);
       navigate("/search?q=" + query);
     }
   }
 
   function handleClick(e, value) {
-    setQuery(value);
     if (value) {
+      console.log("Option selected with query: ", value);
       navigate("/search?q=" + value);
     }
   }
