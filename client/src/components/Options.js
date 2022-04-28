@@ -10,6 +10,7 @@ import Grid from '@mui/material/Grid';
 import Results from './Results';
 import News from './News';
 import PropTypes from 'prop-types';
+import '../styles/Options.css';
 
 function Options(props) {
   const { q } = props;

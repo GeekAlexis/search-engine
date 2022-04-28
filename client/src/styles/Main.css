@@ -22,40 +22,10 @@
 }
 
 
-.main .options .MuiTabs-flexContainer {
-  margin-left: 100px;
-  
-}
-
-.main .options button {
-    min-height: 20px;
-}
-
 .main .results {
   margin-left: 60px;
 }
 
 .main .news {
   margin-left: 166px;
-}
-
-.article {
-  margin-bottom: 20px;
-}
-
-.article .title:hover {
-  color: #1a73e8;
-}
-
-.article .date {
-  margin-top: 5px;
-  margin-bottom: -10px;
-}
-
-.article img {
-  position: relative;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 90%;
-  border-radius: 4px;
 }

@@ -41,7 +41,7 @@ function Search(props) {
   function handleEnter(e) {
     if (e.key === 'Enter') {
       e.preventDefault();
-      if (query) {
+      if (query.length > 0) {
         console.log('Enter pressed with query: ', query);
         navigate('/search?q=' + query);
       }
@@ -49,8 +49,7 @@ function Search(props) {
   }
 
   function handleSearch() {
-    e.preventDefault();
-    if (query) {
+    if (query.length > 0) {
       console.log('Search clicked with query: ', query);
       navigate('/search?q=' + query);
     }
@@ -101,7 +100,12 @@ function Search(props) {
             />
           )}
         />
-        <IconButton type="submit" sx={{ p: '10px' }} onClick={handleSearch}>
+        <IconButton
+          className="search-icon"
+          type="submit"
+          sx={{ p: '10px' }}
+          onClick={handleSearch}
+        >
           <SearchIcon />
         </IconButton>
       </Paper>
