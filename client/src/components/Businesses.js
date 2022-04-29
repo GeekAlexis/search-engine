@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import Pagination from '@mui/material/Pagination';
 import LinearProgress from '@mui/material/LinearProgress';
-import Article from './Article';
+import Business from './Business';
 import PropTypes from 'prop-types';
-import getNews from '../apis/getNews';
+import getBusinesses from '../apis/getBusinesses';
 
-function News(props) {
+function Businesses(props) {
   const { query } = props;
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -18,7 +18,7 @@ function News(props) {
   useEffect(() => {
     async function fetch() {
       setLoading(true);
-      const data = await getNews(query);
+      const data = await getBusinesses(query);
       setData(data);
       setLoading(false);
       setItems(data.slice(0, pageSize));
@@ -37,8 +37,8 @@ function News(props) {
         <LinearProgress />
       ) : (
         <>
-          {items.map((article, i) => (
-            <Article key={i} data={article} />
+          {items.map((business, i) => (
+            <Business key={i} data={business} />
           ))}
 
           <Pagination count={pageCount} page={page} onChange={handleChange} />
@@ -48,8 +48,8 @@ function News(props) {
   );
 }
 
-News.propTypes = {
+Businesses.propTypes = {
   query: PropTypes.string,
 };
 
-export default News;
+export default Businesses;

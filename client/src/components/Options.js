@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { styled } from '@mui/material/styles';
 import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
 import Box from '@mui/material/Box';
@@ -9,6 +10,7 @@ import StoreIcon from '@mui/icons-material/Store';
 import Grid from '@mui/material/Grid';
 import Results from './Results';
 import News from './News';
+import Businesses from './Businesses';
 import PropTypes from 'prop-types';
 import '../styles/Options.css';
 
@@ -20,26 +22,31 @@ function Options(props) {
     setValue(value);
   };
 
+  const MyTab = styled(Tab)({
+    textTransform: 'none',
+    fontSize: '1rem',
+  });
+
   return (
     <Box sx={{ width: '100%' }}>
       <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
         <Tabs value={value} onChange={handleChange}>
-          <Tab
+          <MyTab
             icon={<SearchIcon />}
             iconPosition="start"
             label="All"
             id="tab-1"
           />
-          <Tab
+          <MyTab
             icon={<NewspaperIcon />}
             iconPosition="start"
             label="News"
             id="tab-2"
           />
-          <Tab
+          <MyTab
             icon={<StoreIcon />}
             iconPosition="start"
-            label="Shopping"
+            label="Businesses"
             id="tab-3"
           />
         </Tabs>
@@ -61,7 +68,12 @@ function Options(props) {
         </Grid>
       </TabPanel>
       <TabPanel value={value} index={2}>
-        Shopping
+        <Grid container spacing={2}>
+          <Grid className="businesses" item xs={6}>
+            <Businesses query={q} />
+          </Grid>
+          <Grid item xs={6}></Grid>
+        </Grid>
       </TabPanel>
     </Box>
   );
