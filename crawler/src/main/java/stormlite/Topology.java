@@ -17,32 +17,36 @@
  */
 package stormlite;
 
-import stormlite.bolt.BoltDeclarer;
-import stormlite.bolt.IRichBolt;
-import stormlite.spout.IRichSpout;
-import stormlite.tuple.Fields;
-import org.apache.commons.lang3.tuple.Pair;
-
 import java.util.HashMap;
 import java.util.Map;
 
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+
+import stormlite.bolt.BoltDeclarer;
+import stormlite.bolt.IRichBolt;
+import stormlite.distributed.StringIntPairKeyDeserializer;
+import stormlite.spout.IRichSpout;
+import stormlite.tuple.Fields;
+
 public class Topology {
+
 	/**
 	 * Spouts are the inputs, and each has a stream ID and a parallelism
 	 */
-	Map<String,Pair<Class<? extends IRichSpout>,Integer>> spouts = new HashMap<>();
-	
+	Map<String,StringIntPair> spouts = new HashMap<>();
+
 	/**
 	 * Bolts are the operators, and each has a stream ID
 	 * disjoint from the spouts
 	 */
-	Map<String, Pair<Class<? extends IRichBolt>, Integer>> bolts = new HashMap<>();
-	
+	Map<String, StringIntPair> bolts = new HashMap<>();
+
 	/**
 	 * Bolts have multiple inputs connected to spouts (or other bolts)
 	 */
-	Map<Pair<String,Integer>, String> boltConnectors = new HashMap<>();
-	
+	@JsonDeserialize(keyUsing = StringIntPairKeyDeserializer.class)
+	Map<StringIntPair, String> boltConnectors = new HashMap<>();
+
 	/**
 	 * Each Stream has a set of fields, i.e., a schema
 	 */
@@ -53,35 +57,37 @@ public class Topology {
 	 */
 	Map<String, BoltDeclarer> boltGrouping = new HashMap<>();
 
-	public Map<String, Pair<Class<? extends IRichSpout>, Integer>> getSpouts() {
+	public Map<String, StringIntPair> getSpouts() {
 		return spouts;
 	}
-	
-	public Pair<Class<? extends IRichSpout>, Integer> getSpout(String key) {
-		return spouts.get(key);
+
+	public StringIntPair getSpout(String key) throws ClassNotFoundException {
+		StringIntPair entry = spouts.get(key);
+		return entry;
 	}
 
 	public void setSpouts(String name, Class<? extends IRichSpout> spoutClass, Integer parallel) {
-		this.spouts.put(name, Pair.<Class<? extends IRichSpout>, Integer>of(spoutClass, Integer.valueOf(parallel)));
+		this.spouts.put(name, new StringIntPair(spoutClass.getName(), Integer.valueOf(parallel)));
 	}
 
-	public Map<String, Pair<Class<? extends IRichBolt>, Integer>> getBolts() {
+	public Map<String, StringIntPair> getBolts() {
 		return bolts;
 	}
-	
-	public Pair<Class<? extends IRichBolt>, Integer> getBolt(String key) {
-		return bolts.get(key);
+
+	public StringIntPair getBolt(String key) throws ClassNotFoundException {
+		StringIntPair entry = bolts.get(key);
+		return entry;
 	}
 
 	public void setBolts(String bolt, Class<? extends IRichBolt> boltClass, Integer parallel) {
-		this.bolts.put(bolt, Pair.<Class<? extends IRichBolt>, Integer>of(boltClass, Integer.valueOf(parallel)));
+		this.bolts.put(bolt, new StringIntPair(boltClass.getName(), Integer.valueOf(parallel)));
 	}
 
-	public Map<Pair<String, Integer>, String> getBoltConnectors() {
+	public Map<StringIntPair, String> getBoltConnectors() {
 		return boltConnectors;
 	}
 
-	public void setBoltConnectors(Map<Pair<String, Integer>, String> boltConnectors) {
+	public void setBoltConnectors(Map<StringIntPair, String> boltConnectors) {
 		this.boltConnectors = boltConnectors;
 	}
 
@@ -104,6 +110,5 @@ public class Topology {
 	public BoltDeclarer getBoltDeclarer(String stream) {
 		return getBoltGrouping().get(stream);
 	}
-	
-	
+
 }

@@ -17,76 +17,77 @@
  */
 package stormlite.bolt;
 
+import java.io.Serializable;
+
 import stormlite.routers.Broadcast;
 import stormlite.routers.FieldBased;
-import stormlite.routers.IStreamRouter;
+import stormlite.routers.StreamRouter;
 import stormlite.routers.RoundRobin;
 import stormlite.tuple.Fields;
 
-import java.io.Serializable;
-
 /**
  * This determines how we route messages to the next
- * operator, e.g., round-robin, hash-based, ... 
- * 
+ * operator, e.g., round-robin, hash-based, ...
+ *
  * @author zives
  *
  */
 public class BoltDeclarer implements Serializable {
-	
+
 	public static final String SHUFFLE = "shuffle";
 	public static final String FIELDS = "fields";
+	public static final String FIRST = "first";
 	public static final String ALL = "all";
-	
+
 	/**
 	 * The stream ID
 	 */
 	String stream;
-	
+
 	/**
 	 * The kind of stream (how it routes among multiple executors)
 	 */
 	String type;
-	
+
 	/**
 	 * Fields used for sharding
 	 */
 	Fields shardFields;
-	
+
 	/**
 	 * Where the stream messages are handled
 	 */
-	IStreamRouter router;
-	
+	StreamRouter router;
+
 	/**
-	 * 
+	 *
 	 */
 	private static final long serialVersionUID = 1L;
-	
+
 	public BoltDeclarer() {
 	}
 
 	public BoltDeclarer(String typ) {
 		setType(typ);
 	}
-	
+
 	/**
 	 * Get the type of the stream
-	 * 
+	 *
 	 * @return
 	 */
-	public String getType() { 
-		return type; 
+	public String getType() {
+		return type;
 	}
-	
+
 	/**
 	 * Set the type of stream
 	 * @param typ
 	 */
 	public void setType(String typ) {
 		this.type = typ;
-	} 
-	
+	}
+
 	/**
 	 * The name of the stream
 	 * @return
@@ -94,20 +95,28 @@ public class BoltDeclarer implements Serializable {
 	public String getStream() {
 		return stream;
 	}
-	
+
+	public void setStream(String s) {
+		stream = s;
+	}
+
 	/**
 	 * If we have field-based grouping, we need to know
 	 * the fields used to shard the data
-	 * 
+	 *
 	 * @return
 	 */
 	public Fields getShardingFields() {
 		return shardFields;
 	}
-	
+
+	public void setShardingFields(Fields f) {
+		shardFields = f;
+	}
+
 	/**
 	 * Round robin
-	 * 
+	 *
 	 * @param key The stream name
 	 */
 	public void shuffleGrouping(String key) {
@@ -117,7 +126,7 @@ public class BoltDeclarer implements Serializable {
 
 	/**
 	 * Broadcast
-	 * 
+	 *
 	 * @param key The stream name
 	 */
 	public void allGrouping(String key) {
@@ -127,7 +136,7 @@ public class BoltDeclarer implements Serializable {
 
 	/**
 	 * Partition (shard) by fields
-	 * 
+	 *
 	 * @param key The stream name
 	 * @param fields The fields to group and shard by
 	 */
@@ -141,23 +150,24 @@ public class BoltDeclarer implements Serializable {
 	 * Creates (or returns) a "router" that funnels our
 	 * output stream to the next destination (which might
 	 * have multiple executors).
-	 *  
+	 *
 	 * @return
 	 */
-	public IStreamRouter getRouter() {
+	public StreamRouter getRouter() {
 		if (router == null)
-				// Round-robin is straightforward
+			// Round-robin is straightforward
 			if (getType().equals(SHUFFLE)) {
 				router = new RoundRobin();
-				
+
 				// If we are sharding by fields, look up
 				// the indices within the schema of the stream
 			} else if (getType().equals(FIELDS)) {
 				router = new FieldBased(shardFields);
 			} else if (getType().equals(ALL)) {
-			    router = new Broadcast();
-			}
-		
+				router = new Broadcast();
+			} else
+				throw new UnsupportedOperationException();
+
 		return router;
 	}
 }

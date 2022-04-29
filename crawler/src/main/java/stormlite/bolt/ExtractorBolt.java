@@ -5,7 +5,7 @@ import storage.StorageFactory;
 import storage.StorageInterface;
 import stormlite.OutputFieldsDeclarer;
 import stormlite.TopologyContext;
-import stormlite.routers.IStreamRouter;
+import stormlite.routers.StreamRouter;
 import stormlite.spout.URLSpout;
 import stormlite.tuple.Fields;
 import stormlite.tuple.Tuple;
@@ -42,16 +42,14 @@ public class ExtractorBolt implements IRichBolt{
 	}
 
 	@Override
-	public void execute(Tuple input) {
+	public boolean execute(Tuple input) {
 		String url = input.getStringByField("url");
 		String doc = input.getStringByField("document");
-
-//		System.out.println("extracting: " + url);
 		
 		// Delay
-		if (doc == null) {
+		if (doc == "") {
 			URLSpout.addURLBack(url);
-			return;
+			return true;
 		}
 		
 		// Store documents
@@ -62,6 +60,7 @@ public class ExtractorBolt implements IRichBolt{
 		ArrayList<String> newLinks = CrawlerHelper.traverseHtml(doc, url);
 		URLSpout.addURL(newLinks);
 
+		return true;
 	}
 
 	@Override
@@ -70,7 +69,7 @@ public class ExtractorBolt implements IRichBolt{
 	}
 
 	@Override
-	public void setRouter(IStreamRouter router) {
+	public void setRouter(StreamRouter router) {
 		// DO nothing
 	}
 

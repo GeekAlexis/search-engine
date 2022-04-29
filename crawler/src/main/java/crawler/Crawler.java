@@ -16,8 +16,6 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 public class Crawler implements CrawlMaster {
-    /// TODO: you'll need to flesh all of this out. You'll need to build a thread
-    // pool of CrawlerWorkers etc.
 
 	final static Logger logger = LogManager.getLogger(Crawler.class);
 
@@ -92,8 +90,8 @@ public class Crawler implements CrawlMaster {
         TopologyBuilder builder = new TopologyBuilder();
 
         builder.setSpout(URL_SPOUT, spout, 1);
-        builder.setBolt(FETCHER_BOLT, fetcherBolt, 3).shuffleGrouping(URL_SPOUT);
-        builder.setBolt(EXTRACTOR_BOLT, extractorBolt, 3).shuffleGrouping(FETCHER_BOLT);
+        builder.setBolt(FETCHER_BOLT, fetcherBolt, 8).shuffleGrouping(URL_SPOUT);
+        builder.setBolt(EXTRACTOR_BOLT, extractorBolt, 8).shuffleGrouping(FETCHER_BOLT);
 
         LocalCluster cluster = new LocalCluster();
         Topology topo = builder.createTopology();
@@ -108,9 +106,15 @@ public class Crawler implements CrawlMaster {
 			e.printStackTrace();
 		}
 
-		cluster.submitTopology("test", config,
-        		builder.createTopology());
-        Thread.sleep(800000);
+		try {
+            cluster.submitTopology("test", config, topo);
+        } catch (ClassNotFoundException e){
+            e.printStackTrace();
+        }
+
+
+
+        Thread.sleep(1000000);
         cluster.killTopology("test");
         cluster.shutdown();
 

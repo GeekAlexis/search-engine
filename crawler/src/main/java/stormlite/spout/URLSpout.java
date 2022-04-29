@@ -2,7 +2,7 @@ package stormlite.spout;
 
 import stormlite.OutputFieldsDeclarer;
 import stormlite.TopologyContext;
-import stormlite.routers.IStreamRouter;
+import stormlite.routers.StreamRouter;
 import stormlite.tuple.Fields;
 import stormlite.tuple.Values;
 import org.apache.logging.log4j.LogManager;
@@ -55,22 +55,27 @@ public class URLSpout implements IRichSpout{
 	}
 
 	@Override
-	public void nextTuple() {
+	public boolean nextTuple() {
 		if (urlQueue.size() > 0 && currCount < maxCount) {
 			String url = urlQueue.poll();
-			log.debug(getExecutorId() + " emitting " + url);
-			this.collector.emit(new Values<Object>(url));
+//			log.debug(getExecutorId() + " emitting " + url);
+//			this.collector.emit(new Values<Object>(url, ""));
+
+			this.collector.emit(new Values<Object>(url), getExecutorId());
+
 			currCount += 1;
 //			if (currCount % 10000 == 0){
 //				System.out.println("currCount: " + currCount);
 //			}
 		}
 		Thread.yield();
+
+		return true;
 		
 	}
 
 	@Override
-	public void setRouter(IStreamRouter router) {
+	public void setRouter(StreamRouter router) {
 		this.collector.setRouter(router);
 	}
 	

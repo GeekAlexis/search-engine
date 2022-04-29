@@ -58,26 +58,27 @@ public class StorageImpl implements StorageInterface {
             }
 
             // update existing record
-        } else {
-            try {
-                long crawledOn = System.currentTimeMillis();
-                String stm = "UPDATE \"Document\" SET content = ?, crawled_on = ? WHERE url = ?";
-
-                PreparedStatement pst = dbConn.prepareStatement(stm);
-                pst.setBytes(1, content.getBytes());
-                pst.setLong(2, crawledOn);
-                pst.setString(3, url);
-                pst.executeUpdate();
-
-                System.out.println("updating url: " + url);
-
-                pst.close();
-
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
-
         }
+//        else {
+//            try {
+//                long crawledOn = System.currentTimeMillis();
+//                String stm = "UPDATE \"Document\" SET content = ?, crawled_on = ? WHERE url = ?";
+//
+//                PreparedStatement pst = dbConn.prepareStatement(stm);
+//                pst.setBytes(1, content.getBytes());
+//                pst.setLong(2, crawledOn);
+//                pst.setString(3, url);
+//                pst.executeUpdate();
+//
+//                System.out.println("updating url: " + url);
+//
+//                pst.close();
+//
+//            } catch (SQLException e) {
+//                e.printStackTrace();
+//            }
+//
+//        }
     }
 
 

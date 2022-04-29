@@ -49,7 +49,7 @@ public class CrawlerHelper {
 				in.close();
 				return response.toString();
 			} else {
-				System.out.println("GET request not worked");
+				System.out.println("GET request didn't work");
 				return null;
 			}
 		} catch (MalformedURLException e) {
@@ -109,19 +109,13 @@ public class CrawlerHelper {
 			type = type.split(";")[0];
 		}
     	if (!type.startsWith("text/html") && !type.startsWith("text/xml") && !type.startsWith("application/xml") && !type.endsWith("+xml")) {
-//			logger.info(url + ": illegal content type");
-			System.out.println("type: " + type);
-			System.out.println(url + ": illegal content type");
 			return false;
 		}
     	// Check size
 		if (length > ((long) maxFileSize * 1024 * 1024)) {
-//			logger.info(url + ": reached max size");
-			System.out.println("length: " + length);
 			System.out.println(url + ": reached max size");
 			return false;
 		} else if (length < 0) {
-//			logger.info(url + ": illegal size");
 			System.out.println(url + ": illegal size");
 			return false;
 		}

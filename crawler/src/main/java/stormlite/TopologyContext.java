@@ -17,44 +17,90 @@
  */
 package stormlite;
 
-import stormlite.routers.IStreamRouter;
-import stormlite.tasks.ITask;
-
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Queue;
 
+import stormlite.routers.StreamRouter;
+import stormlite.tasks.ITask;
+
 /**
  * Information about the execution of a topology, including
  * the stream routers
- * 
+ *
  * @author zives
  *
  */
 public class TopologyContext {
 	Topology topology;
-	
+
 	Queue<ITask> taskQueue;
-	
+
+	public static enum STATE {INIT, MAPPING, REDUCING, IDLE};
+
+	STATE state = STATE.INIT;
+
+	int mapOutputs = 0;
+
+	int reduceOutputs = 0;
+
+	Map<String, Integer> sendOutputs = new HashMap<>();
+
 	/**
 	 * Mappings from stream IDs to routers
 	 */
-	Map<String,IStreamRouter> next = new HashMap<>();
-	
+	Map<String,StreamRouter> next = new HashMap<>();
+
 	public TopologyContext(Topology topo, Queue<ITask> theTaskQueue) {
 		topology = topo;
 		taskQueue = theTaskQueue;
 	}
-	
+
 	public Topology getTopology() {
 		return topology;
 	}
-	
+
 	public void setTopology(Topology topo) {
 		this.topology = topo;
 	}
-	
+
 	public void addStreamTask(ITask next) {
 		taskQueue.add(next);
 	}
+
+	public STATE getState() {
+		return state;
+	}
+
+	public void setState(STATE state) {
+		this.state = state;
+	}
+
+	public int getMapOutputs() {
+		return mapOutputs;
+	}
+
+	public void incMapOutputs(String key) {
+		this.mapOutputs++;
+	}
+
+	public int getReduceOutputs() {
+		return reduceOutputs;
+	}
+
+	public void incReduceOutputs(String key) {
+		this.reduceOutputs++;
+	}
+
+	public void incSendOutputs(String key) {
+		if (!sendOutputs.containsKey(key))
+			sendOutputs.put(key, Integer.valueOf(0));
+
+		sendOutputs.put(key,  Integer.valueOf(sendOutputs.get(key) + 1));
+	}
+
+	public Map<String, Integer> getSendOutputs() {
+		return sendOutputs;
+	}
+
 }

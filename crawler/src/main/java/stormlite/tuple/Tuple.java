@@ -17,45 +17,81 @@
  */
 package stormlite.tuple;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 /**
  * Simple tuple class
- * 
+ *
  * @author zives
  *
  */
-public class Tuple {
+public class Tuple implements Serializable {
+	/**
+	 *
+	 */
+	private static final long serialVersionUID = 1L;
+
 	private Fields fields;
 	private List<Object> values;
 
 	/**
+	 * Primarily for your own debug purposes we will track
+	 * the source node for each tuple
+	 */
+	private String sourceExecutor;
+
+	private boolean endOfStream = false;
+
+	private Tuple() {
+		endOfStream = true;
+		values = null;
+	}
+
+	/**
+	 * Returns a special tuple indicating end of stream
+	 *
+	 * @return
+	 */
+	public static Tuple getEndOfStream(String sourceExecutor) {
+		Tuple t = new Tuple();
+		t.setSourceExecutor(sourceExecutor);
+		return t;
+	}
+
+	/**
 	 * Initialize tuple with list of fields and values
-	 * 
+	 *
 	 * @param fields2
 	 * @param tuple
 	 */
-	public Tuple(Fields fields2, List<Object> tuple) {
+	public Tuple(Fields fields2, List<Object> tuple, String source) {
 		fields = fields2;
-		
+
 		values = tuple;
-		
+
+		sourceExecutor = source;
+
 		if (fields != null && fields.size() != values.size())
 			throw new IllegalArgumentException("Cardinality mismatch between fields and values");
 	}
 
 	/**
 	 * Initialize a unary tuple with a field name
-	 * 
+	 *
 	 * @param fieldName
 	 * @param value
 	 */
-	public Tuple(String fieldName, Object value) {
+	public Tuple(String fieldName, Object value, String source) {
 		fields = new Fields(fieldName);
-		
+
 		values = new ArrayList<>();
 		values.add(value);
+
+		sourceExecutor = source;
 	}
 
 	/**
@@ -72,7 +108,7 @@ public class Tuple {
 
 	/**
 	 * Values, in list order
-	 * 
+	 *
 	 * @return
 	 */
 	public List<Object> getValues() {
@@ -82,10 +118,10 @@ public class Tuple {
 	public void setValues(List<Object> values) {
 		this.values = values;
 	}
-	
+
 	public Object getObjectByField(String string) {
 		int i = fields.indexOf(string);
-		
+
 		if (i < 0)
 			return null;
 		else
@@ -95,26 +131,56 @@ public class Tuple {
 	public String getStringByField(String string) {
 		return (String)getObjectByField(string);
 	}
-	
+
 	public Integer getIntegerByField(String string) {
 		return (Integer)getObjectByField(string);
 	}
-	
+
 	public String toString() {
+		if (isEndOfStream()) {
+			return "(EOS)";
+		}
+
 		StringBuilder ret = new StringBuilder();
-		
+
 		ret.append('{');
 		for (int i = 0; i < values.size(); i++) {
 			if (i > 0)
 				ret.append(',');
-			
+
 			ret.append(fields.get(i));
 			ret.append(": ");
 			ret.append(values.get(i));
 		}
 		ret.append('}');
-		
+
 		return ret.toString();
 	}
-	
+
+	@JsonIgnore
+	public Object getHead() {
+		return values.get(0);
+	}
+
+	@JsonIgnore
+	public List<Object> getTail() {
+		return values.subList(1, values.size());
+	}
+
+
+	public String getSourceExecutor() {
+		return sourceExecutor;
+	}
+
+	public void setSourceExecutor(String sourceExecutor) {
+		this.sourceExecutor = sourceExecutor;
+	}
+
+	public boolean isEndOfStream() {
+		return endOfStream;
+	}
+
+	public void setEndOfStream(boolean eos) {
+		endOfStream = eos;
+	}
 }

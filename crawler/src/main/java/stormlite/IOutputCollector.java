@@ -17,26 +17,31 @@
  */
 package stormlite;
 
-import stormlite.routers.IStreamRouter;
-
 import java.util.List;
+
+import stormlite.routers.StreamRouter;
 
 /**
  * A stream propagation interface, used by a spout or bolt to send
  * tuples to the next stage
- * 
+ *
  * @author zives
  *
  */
 public interface IOutputCollector {
 	/**
 	 * Propagates a tuple (list of objects) to a particular
-	 * stream
-	 * 
-	 * @param tuple
+	 * stream, and documents who produced it
+	 *
+	 * @param tuple tuple, as a list, of objects to emit on the stream
+	 * @param sourceExecutor (optional) ID of the executor node emitting the tuple
 	 */
-	public void emit(List<Object> tuple);
-	
-	public void setRouter(IStreamRouter router);
+	public void emit(List<Object> tuple, String sourceExecutor);
+
+	/**
+	 * Sets the destination for the collector
+	 * @param router
+	 */
+	public void setRouter(StreamRouter router);
 
 }

@@ -17,43 +17,54 @@
  */
 package stormlite.bolt;
 
-import stormlite.IOutputCollector;
-import stormlite.TopologyContext;
-import stormlite.routers.IStreamRouter;
-
 import java.util.ArrayList;
 import java.util.List;
 
+import stormlite.IOutputCollector;
+import stormlite.TopologyContext;
+import stormlite.routers.StreamRouter;
+
 /**
  * Simplified version of Storm output queues
- * 
+ *
  * @author zives
  *
  */
-public class OutputCollector implements IOutputCollector {
-	List<IStreamRouter> routers = new ArrayList<>();
+public class OutputCollector implements IOutputCollector{
+	List<StreamRouter> routers = new ArrayList<>();
 	TopologyContext context;
-	
+
 	public OutputCollector(TopologyContext context) {
 		this.context = context;
 	}
 
 	@Override
-	public void setRouter(IStreamRouter router) {
-		if (!routers.contains(router))
-			this.routers.add(router);
+	public void setRouter(StreamRouter router) {
+		this.routers.add(router);
 	}
-	
+
 	/**
 	 * Emits a tuple to the stream destination
 	 * @param tuple
 	 */
-	public void emit(List<Object> tuple) {
-		for (IStreamRouter router: routers)
-			router.execute(tuple, context);
+	public synchronized void emit(List<Object> tuple, String sourceExecutor) {
+		for (StreamRouter router: routers)
+			router.execute(tuple, context, sourceExecutor);
 	}
 
-	public List<IStreamRouter> getRouters() {
+	public synchronized void emitEndOfStream(String sourceExecutor) {
+		for (StreamRouter router: routers)
+			router.executeEndOfStream(context, sourceExecutor);
+	}
+
+	public List<StreamRouter> getRouters() {
 		return routers;
+	}
+
+	public void write(String key, String value, String sourceExecutor) {
+		List<Object> values = new ArrayList<>();
+		values.add(key);
+		values.add(value);
+		emit(values, sourceExecutor);
 	}
 }

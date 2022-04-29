@@ -17,48 +17,54 @@
  */
 package stormlite.bolt;
 
+import java.util.Map;
+
 import stormlite.IStreamSource;
 import stormlite.TopologyContext;
-import stormlite.routers.IStreamRouter;
+import stormlite.routers.StreamRouter;
 import stormlite.tuple.Fields;
 import stormlite.tuple.Tuple;
 
-import java.util.Map;
-
 public interface IRichBolt extends IStreamSource {
-	
+
 	/**
 	 * Called when a bolt is about to be shut down
 	 */
 	public void cleanup();
-	
+
 	/**
-	 * Processes a tuple
+	 * Processes a tuple.
+	 *
+	 *
+	 * In the updated version of the API, we'll return false if the
+	 * bolt has reached end-of-stream and doesn't need to be scheduled
+	 * any longer.
+	 *
 	 * @param input
 	 */
-	public void execute(Tuple input);
-	
+	public boolean execute(Tuple input);
+
 	/**
 	 * Called when this task is initialized
-	 * 
+	 *
 	 * @param stormConf
 	 * @param context
 	 * @param collector
 	 */
 	public void prepare(Map<String,String> stormConf,
-            TopologyContext context,
-            OutputCollector collector);
-	
+						TopologyContext context,
+						OutputCollector collector);
+
 	/**
 	 * Called during topology creation: sets the output router
-	 * 
+	 *
 	 * @param router
 	 */
-	public void setRouter(IStreamRouter router);
+	public void setRouter(StreamRouter router);
 
 	/**
 	 * Get the list of fields in the stream tuple
-	 * 
+	 *
 	 * @return
 	 */
 	public Fields getSchema();

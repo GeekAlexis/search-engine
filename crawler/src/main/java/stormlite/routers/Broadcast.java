@@ -1,3 +1,5 @@
+package stormlite.routers;
+
 /**
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -15,53 +17,53 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package stormlite.routers;
-
-import stormlite.bolt.IRichBolt;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 import java.util.ArrayList;
 import java.util.List;
 
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+
+import stormlite.bolt.IRichBolt;
+
 /**
  * Indicates that we should broadcast to all children
- * 
+ *
  * @author zives
  *
  */
-public class Broadcast extends IStreamRouter {
+public class Broadcast extends StreamRouter {
 	static Logger log = LogManager.getLogger(Broadcast.class);
-	
+
 	int inx = 0;
 	List<IRichBolt> children;
-	
+
 	public Broadcast() {
 		children = new ArrayList<IRichBolt>();
 	}
-	
+
 	public Broadcast(IRichBolt child) {
 		children = new ArrayList<IRichBolt>();
 		children.add(child);
 	}
-	
+
 	public Broadcast(List<IRichBolt> children) {
 		this.children = children;
 	}
-	
+
 
 	/**
 	 * Broadcast to all of the bolts
-	 * 
+	 *
 	 */
 	@Override
 	protected List<IRichBolt> getBoltsFor(List<Object> tuple) {
-		
+
 		if (getBolts().isEmpty()) {
 			log.error("Could not find destination for " + tuple.toString());
 			return null;
 		}
-		
+
 		return getBolts();
 	}
 

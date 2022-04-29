@@ -17,40 +17,44 @@
  */
 package stormlite.spout;
 
-import stormlite.IOutputCollector;
-import stormlite.TopologyContext;
-import stormlite.routers.IStreamRouter;
-
 import java.util.ArrayList;
 import java.util.List;
 
+import stormlite.IOutputCollector;
+import stormlite.TopologyContext;
+import stormlite.routers.StreamRouter;
+
 /**
  * Simplified version of Storm output queues
- * 
+ *
  * @author zives
  *
  */
 public class SpoutOutputCollector implements IOutputCollector  {
-	List<IStreamRouter> routers = new ArrayList<>();
+	List<StreamRouter> routers = new ArrayList<>();
 	TopologyContext context;
-	
+
 	public SpoutOutputCollector(TopologyContext context) {
 		this.context = context;
 	}
-	
+
 	@Override
-	public void setRouter(IStreamRouter router) {
-		if (!routers.contains(router))
-			this.routers.add(router);
+	public void setRouter(StreamRouter router) {
+		this.routers.add(router);
 	}
 
 	/**
 	 * Emits a tuple to the stream destination
 	 * @param tuple
 	 */
-	public void emit(List<Object> tuple) {
-		for (IStreamRouter router: routers)
-			router.execute(tuple, context);
+	public synchronized void emit(List<Object> tuple, String sourceExecutor) {
+		for (StreamRouter router: routers)
+			router.execute(tuple, context, sourceExecutor);
+	}
+
+	public synchronized void emitEndOfStream(String sourceExecutor) {
+		for (StreamRouter router: routers)
+			router.executeEndOfStream(context, sourceExecutor);
 	}
 
 }

@@ -7,7 +7,7 @@ import storage.StorageFactory;
 import storage.StorageInterface;
 import stormlite.OutputFieldsDeclarer;
 import stormlite.TopologyContext;
-import stormlite.routers.IStreamRouter;
+import stormlite.routers.StreamRouter;
 import stormlite.tuple.Fields;
 import stormlite.tuple.Tuple;
 import stormlite.tuple.Values;
@@ -55,7 +55,7 @@ public class FetcherBolt implements IRichBolt{
 	}
 
 	@Override
-	public void execute(Tuple input) {
+	public boolean execute(Tuple input) {
 		String url = input.getStringByField("url");
 		
 		URLInfo info = new URLInfo(url);
@@ -64,7 +64,7 @@ public class FetcherBolt implements IRichBolt{
 		if (robotMap.containsKey(info.getHostName())) {
 			if (!robotMap.get(info.getHostName()).allowToCrawl(info.getFilePath())) {
 				logger.info(url + ": robot disallow");
-				return;
+				return true;
 			}
 		} else {
 			String robotUrl = (info.isSecure() ? "https://" : "http://") + info.getHostName() + "/robots.txt";
@@ -82,15 +82,20 @@ public class FetcherBolt implements IRichBolt{
 			if (!rInfo.allowToCrawl(info.getFilePath())) {
 				logger.info(url + ": robot disallow");
 				System.out.println(url + ": robot disallow");
-				return;
+				return true;
 			}
 		}
 		
 		
 		// Check if need to delay 
 		if (robotMap.get(info.getHostName()).needToDelay()) {
-			collector.emit(new Values<Object>(url, null));
-			return;
+//			collector.emit(new Values<Object>(url, ""));
+
+			collector.write(url, "", getExecutorId());
+
+
+
+			return true;
 		}
 		
 		// Send HEAD request first
@@ -113,39 +118,41 @@ public class FetcherBolt implements IRichBolt{
 				// Check if valid: type, size, language
 				if (!CrawlerHelper.checkValid(url, maxFileSize, conn)) {
 					System.out.println(url + ": not valid type/size/language");
-					return;
+					return true;
 				}
 				// Check if already in db
 				Long lastModified = conn.getLastModified();
 				if (db.getDocument(url) != null) {
 					// don't crawl but process
 					if (lastModified <= db.getCrawledTime(url)) {
-						logger.info(url + ": not modified");
 						System.out.println(url + ": not modified");
-						html = db.getDocument(url);
+//						html = db.getDocument(url);
+						return true;
 					}
 				}
 			} else if ((responseCode == HttpURLConnection.HTTP_MOVED_PERM)|| (responseCode == HttpURLConnection.HTTP_MOVED_TEMP)) {
 				String newUrl = conn.getHeaderField("Location");
 				if (newUrl != null) {
-					collector.emit(new Values<Object>(newUrl, null));
+//					collector.emit(new Values<Object>(newUrl, ""));
+					collector.write(newUrl, "", getExecutorId());
+
 				}
-				return;
+				return true;
 
 			} else {
-				System.out.println("HEAD request not worked");
-				return;
+				System.out.println("HEAD request didn't work");
+				return true;
 			}
 
 		} catch (MalformedURLException e) {
 			e.printStackTrace();
-			return;
+			return true;
 		} catch (ProtocolException e){
 			e.printStackTrace();
-			return;
+			return true;
 		} catch (IOException e) {
 			e.printStackTrace();
-			return;
+			return true;
 		}
 
 		// Send GET request
@@ -156,11 +163,14 @@ public class FetcherBolt implements IRichBolt{
 
 		// Check if have seen the content
 		if (db.checkSeenContent(html)) {
-			logger.info(url + ": content seen");
 			System.out.println(url + ": content seen");
-			return;
+			return true;
 		}
-		collector.emit(new Values<Object>(url, html));
+//		collector.emit(new Values<Object>(url, html));
+
+		collector.write(url, html, getExecutorId());
+
+		return true;
 	}
 
 	@Override
@@ -169,11 +179,10 @@ public class FetcherBolt implements IRichBolt{
 		this.db = StorageFactory.getInstance();
 		this.maxFileSize = 1; // Set max file size to 1
 		this.robotMap =  new HashMap<String, RobotInfo>();
-		
 	}
 
 	@Override
-	public void setRouter(IStreamRouter router) {
+	public void setRouter(StreamRouter router) {
 		this.collector.setRouter(router);
 		
 	}

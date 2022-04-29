@@ -17,60 +17,61 @@
  */
 package stormlite.routers;
 
-import stormlite.bolt.IRichBolt;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
 import java.util.ArrayList;
 import java.util.List;
 
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+
+import stormlite.bolt.IRichBolt;
+
 /**
  * Does round-robin among the destination bolts
- * 
+ *
  * @author zives
  *
  */
-public class RoundRobin extends IStreamRouter {
+public class RoundRobin extends StreamRouter {
 	static Logger log = LogManager.getLogger(RoundRobin.class);
-	
+
 	int inx = 0;
 	List<IRichBolt> children;
-	
+
 	public RoundRobin() {
 		children = new ArrayList<IRichBolt>();
 	}
-	
+
 	public RoundRobin(IRichBolt child) {
 		children = new ArrayList<IRichBolt>();
 		children.add(child);
 	}
-	
+
 	public RoundRobin(List<IRichBolt> children) {
 		this.children = children;
 	}
-	
+
 
 	/**
 	 * Round-robin through the bolts
-	 * 
+	 *
 	 */
 	@Override
 	protected List<IRichBolt> getBoltsFor(List<Object> tuple) {
-		
+
 		if (getBolts().isEmpty()) {
 			log.error("Could not find destination for " + tuple.toString());
 			return null;
 		}
-		
+
 		IRichBolt bolt = getBolts().get(inx);
-		
+
 		inx = (inx + 1) % getBolts().size();
 
 		log.debug("Routing " + tuple.toString() + " to " + bolt.getExecutorId());
-		
-        List<IRichBolt> bolts = new ArrayList<>();
-        bolts.add(bolt);
-		return bolts;
+
+		List<IRichBolt> ret = new ArrayList<>();
+		ret.add(bolt);
+		return ret;
 	}
 
 
