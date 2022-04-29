@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import Grid from '@mui/material/Grid';
 import Pagination from '@mui/material/Pagination';
 import LinearProgress from '@mui/material/LinearProgress';
 import Business from './Business';
@@ -11,7 +12,7 @@ function Businesses(props) {
   const [loading, setLoading] = useState(false);
 
   const [page, setPage] = useState(1);
-  const pageSize = 10;
+  const pageSize = 12;
   const pageCount = Math.ceil(data.length / pageSize);
   const [items, setItems] = useState([]);
 
@@ -36,13 +37,22 @@ function Businesses(props) {
       {loading ? (
         <LinearProgress />
       ) : (
-        <>
-          {items.map((business, i) => (
-            <Business key={i} data={business} />
-          ))}
+        <React.Fragment>
+          <Grid container spacing={2}>
+            {items.map((business, i) => (
+              <Grid key={i} item xs={3}>
+                <Business data={business} />
+              </Grid>
+            ))}
+          </Grid>
 
-          <Pagination count={pageCount} page={page} onChange={handleChange} />
-        </>
+          <Pagination
+            className="pagination"
+            count={pageCount}
+            page={page}
+            onChange={handleChange}
+          />
+        </React.Fragment>
       )}
     </React.Fragment>
   );

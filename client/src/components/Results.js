@@ -32,7 +32,12 @@ function Results(props) {
         <Record key={i} data={record} />
       ))}
 
-      <Pagination count={pageCount} page={page} onChange={handleChange} />
+      <Pagination
+        className="pagination"
+        count={pageCount}
+        page={page}
+        onChange={handleChange}
+      />
     </>
   );
 }

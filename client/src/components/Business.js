@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 import CardMedia from '@mui/material/CardMedia';
@@ -17,26 +17,29 @@ function Business(props) {
     <Card
       className="business"
       variant="outlined"
-      sx={{ maxWidth: 230 }}
+      sx={{ maxWidth: 240 }}
       style={{ boxShadow: 'none' }}
     >
       <CardActionArea href={data.url} target="_blank">
         <CardMedia
           component="img"
-          height="140"
+          height="160"
           image={data.image_url}
           alt={data.alias}
         />
         <CardContent>
-          <Typography gutterBottom variant="h5" component="div">
+          <Typography
+            gutterBottom
+            variant="h5"
+            component="div"
+            sx={{
+              fontSize: 19,
+            }}
+          >
             {data.name}
           </Typography>
 
           <Grid container spacing={1}>
-            <Grid item xs={1}>
-              <Typography variant="body">{data.rating} </Typography>
-            </Grid>
-
             <Grid item xs={6}>
               <Rating
                 name="rating"
@@ -50,8 +53,14 @@ function Business(props) {
               />
             </Grid>
 
-            <Grid item xs={5}>
-              <Typography variant="body2" color="text.secondary">
+            <Grid item xs={6}>
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                sx={{
+                  fontSize: 12,
+                }}
+              >
                 {data.review_count} reviews
               </Typography>
             </Grid>
@@ -91,7 +100,7 @@ function Business(props) {
 
           <Typography
             variant="subtitle2"
-            sx={{ display: 'inline-block', fontSize: 12, lineHeight: 1.25 }}
+            sx={{ fontSize: 12, lineHeight: 1.25 }}
           >
             <span className="span">Phone: </span>
             {data.display_phone}

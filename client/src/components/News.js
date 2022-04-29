@@ -41,7 +41,12 @@ function News(props) {
             <Article key={i} data={article} />
           ))}
 
-          <Pagination count={pageCount} page={page} onChange={handleChange} />
+          <Pagination
+            className="pagination"
+            count={pageCount}
+            page={page}
+            onChange={handleChange}
+          />
         </>
       )}
     </React.Fragment>
