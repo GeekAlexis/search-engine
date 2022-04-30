@@ -1,5 +1,7 @@
 package storage;
 
+import java.util.HashMap;
+
 public interface StorageInterface {
 
     /**
@@ -8,14 +10,14 @@ public interface StorageInterface {
     public int getCorpusSize();
 
     /**
-     * Add a new document
+     * Adds a new document
      */
     public void addDocument(String url, String documentContents);
 
     /**
      * Retrieves a document's contents by URL
      */
-    public String getDocument(String url);
+    public String getDocumentByUrl(String url);
 
     /**
      * Retrieves a document's crawled time by URL in System.currentTimeMillis()
@@ -28,9 +30,14 @@ public interface StorageInterface {
     public void close();
 
     /**
-     * Check if content is seen
+     * Checks if content is seen
      */
     public boolean checkSeenContent(String content);
+
+    /**
+     * Gets all documents within a range
+     */
+    public HashMap<Integer, String> getDocumentByRange(int startIdx, int numDoc);
 
 	
 }

@@ -122,11 +122,11 @@ public class FetcherBolt implements IRichBolt{
 				}
 				// Check if already in db
 				Long lastModified = conn.getLastModified();
-				if (db.getDocument(url) != null) {
+				if (db.getDocumentByUrl(url) != null) {
 					// don't crawl but process
 					if (lastModified <= db.getCrawledTime(url)) {
 						System.out.println(url + ": not modified");
-//						html = db.getDocument(url);
+//						html = db.getDocumentByUrl(url);
 						return true;
 					}
 				}

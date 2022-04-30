@@ -23,13 +23,6 @@
     </repository>
 </repositories>
     <dependencies>
-    <!--
-<dependency>
-	<groupId>edu.upenn.cis.cis455</groupId>
-	<artifactId>homework-1</artifactId>
-	<version>1.0-SNAPSHOT</version>
-</dependency>
--->
 <!-- https://mvnrepository.com/artifact/com.sparkjava/spark-core -->
 <dependency>
     <groupId>com.sparkjava</groupId>
@@ -131,6 +124,13 @@
                 <mainClass>crawler.Crawler</mainClass>
               </configuration>
               </execution>
+                  <execution>
+                      <id>download</id>
+                      <goals><goal>java</goal></goals>
+                      <configuration>
+                          <mainClass>storage.ContentDownload</mainClass>
+                      </configuration>
+                  </execution>
               </executions>
             </plugin>
         </plugins>

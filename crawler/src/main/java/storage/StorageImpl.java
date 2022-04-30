@@ -8,6 +8,8 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.PreparedStatement;
 
+import java.util.HashMap;
+
 public class StorageImpl implements StorageInterface {
 
     private Connection dbConn;
@@ -39,7 +41,7 @@ public class StorageImpl implements StorageInterface {
     @Override
     public void addDocument(String url, String content) {
         // if url not in db yet
-        if (getDocument(url) == null){
+        if (getDocumentByUrl(url) == null){
             try {
                 long crawledOn = System.currentTimeMillis();
                 String stm = "INSERT INTO \"Document\" (url, content, crawled_on) " +
@@ -83,7 +85,7 @@ public class StorageImpl implements StorageInterface {
 
 
     @Override
-    public String getDocument(String url) {
+    public String getDocumentByUrl(String url) {
         Statement stmt = null;
         try {
             stmt = dbConn.createStatement();
@@ -156,6 +158,32 @@ public class StorageImpl implements StorageInterface {
         }
         return true;
     }
+
+    @Override
+    public HashMap<Integer, String> getDocumentByRange(int startIdx, int numDoc){
+        HashMap<Integer, String> map = new HashMap<>();
+
+        try {
+            String stm = "SELECT id, content FROM \"Document\" ORDER BY id LIMIT ? OFFSET ?;";
+            PreparedStatement pst = dbConn.prepareStatement(stm);
+            pst.setInt(1, numDoc);
+            pst.setInt(2, startIdx - 1);
+
+            ResultSet rs = pst.executeQuery();
+            while ( rs.next() ) {
+                int id = rs.getInt("id");
+                byte[] contentByte = rs.getBytes("content");
+                String content = new String(contentByte);
+                map.put(id, content);
+            }
+
+            pst.close();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return map;
+    }
+
 
     @Override
     public void close() {
