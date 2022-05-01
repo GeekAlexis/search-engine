@@ -56,8 +56,11 @@ public class IndexDriver {
         }
         FileOutputFormat.setOutputPath(job, outputDir);
 
+        System.out.println("Starting indexer job...");
+
         if (!job.waitForCompletion(true)) {
-            throw new RuntimeException("Job failed!");
+            System.err.println("Job failed!");
+            System.exit(1);
         }
 
         System.out.println("Job completed!");

@@ -7,7 +7,10 @@ import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.Level;
 import static org.apache.logging.log4j.core.config.Configurator.setLevel;
 
+
 public class WebInterface {
+    
+
     public static void main(String[] args) {
         if (args.length < 1 || args.length > 2) {
             System.err.println("Syntax: WebInterface {port} {root}");
@@ -15,5 +18,15 @@ public class WebInterface {
         }
 
         setLevel("edu.upenn.cis455", Level.DEBUG);
+
+        port(Integer.parseInt(args[0]));
+        if (args.length == 2) {
+            staticFiles.externalLocation(args[1]);
+        }
+
+        get("/retrieve", (req, res) -> {
+
+        });
+
     }
 }
