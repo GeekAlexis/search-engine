@@ -3,27 +3,43 @@ package edu.upenn.cis455;
 import org.apache.hadoop.mapreduce.*;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.*;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import edu.upenn.cis455.storage.Storage;
+import edu.upenn.cis455.storage.StorageFactory;
+import edu.upenn.cis455.storage.HitList;
 import edu.upenn.cis455.utils.ParserWritable;
+
 
 public class Inverter extends Reducer<Text, ParserWritable, Text, Text> {
     private static final Logger logger = LogManager.getLogger(Inverter.class);
 
+    private Storage store;
+    private Map<Integer, HitList> hitLists;
+
     @Override
-    protected void setup(Context context) throws IOException, InterruptedException {}
+    protected void setup(Context context) throws IOException, InterruptedException {
+        Configuration conf = context.getConfiguration();
+        String storageDir = conf.get("storageDir");
+		try {
+			store = StorageFactory.getDatabaseInstance(storageDir);
+			hitLists = store.createHitBuffer(context.getTaskAttemptID().getTaskID().getId());
+		}
+		catch (Exception e) {
+			throw new RuntimeException("Unable to create BDB store in inverter");
+		}
+    }
     
     @Override
     protected void reduce(Text key, Iterable<ParserWritable> values, Context context) throws IOException, InterruptedException {
-        Map<Integer, List<Integer>> hitMap = new HashMap<>();
+        hitLists.clear();
         String term = key.toString();
 
         for (ParserWritable value : values) {
@@ -31,24 +47,32 @@ public class Inverter extends Reducer<Text, ParserWritable, Text, Text> {
             int docId = value.getDocId();
             int pos = value.getPos();
 
-            List<Integer> posList = hitMap.get(docId);
-            if (posList == null) {
-                posList = new ArrayList<>();
-                hitMap.put(docId, posList);
+            HitList hitList = hitLists.get(docId);
+            if (hitList == null) {
+                hitList = new HitList(docId);
             }
 
-            posList.add(pos);
-            // Insert to table 3, get generated keys
+            hitList.add(pos);
+            hitLists.put(docId, hitList);
         }
-
-        int docFreq = hitMap.size();
-
-        for (var entry : hitMap.entrySet()) {
+        
+        int docFreq = hitLists.size();
+        logger.debug("Inverter emitting word: {}, df: {}", term, docFreq);
+        
+        StringBuilder outputStr = new StringBuilder(String.format("%d:", docFreq));
+        for (var entry : hitLists.entrySet()) {
             int docId = entry.getKey();
-            List<Integer> posList = entry.getValue();
+            HitList hitList = entry.getValue();
+            int termFreq = hitList.size();
             
-            int termFreq = posList.size();
-            context.write(key);
+            String joinedHits = hitList.getHits().stream().map(String::valueOf).collect(Collectors.joining(","));
+            outputStr.append(String.format("%d,%d|%s;", docId, termFreq, joinedHits));
         }
+        context.write(key, new Text(outputStr.toString()));
+    }
+
+    @Override
+    protected void cleanup(Context context) throws IOException, InterruptedException {
+        store.close();
     }
 }

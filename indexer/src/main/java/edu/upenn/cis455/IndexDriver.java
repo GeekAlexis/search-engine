@@ -18,24 +18,27 @@ import static org.apache.logging.log4j.core.config.Configurator.setLevel;
 
 
 public class IndexDriver {
-    public static void main(String[] args) throws IOException {
-        if (args.length != 2) {
-            System.err.println("Syntax: IndexDriver {input director} {output directory}");
+    public static void main(String[] args) throws Exception {
+        if (args.length != 3) {
+            System.err.println("Syntax: IndexDriver {input director} {output directory} {storage directory}");
             System.exit(1);
         }
 
         setLevel("edu.upenn.cis455", Level.DEBUG);
 
         Configuration conf = new Configuration();
+        conf.set("storageDir", args[2]);
+        conf.set("mapreduce.output.textoutputformat.separator", ",");
+
         FileSystem fs = FileSystem.get(conf);
 
         Job job = Job.getInstance(conf);
         job.setJarByClass(IndexDriver.class);
         job.setJobName("Indexer");
-        
+
         job.setInputFormatClass(WholeFileInputFormat.class);
-        job.setOutputKeyClass(theClass);
-        job.setOutputValueClass(theClass);
+        job.setOutputKeyClass(Text.class);
+        job.setOutputValueClass(Text.class);
 
         job.setMapperClass(Parser.class);
         job.setReducerClass(Inverter.class);
@@ -50,10 +53,12 @@ public class IndexDriver {
         }
         FileOutputFormat.setOutputPath(job, outputDir);
 
-        MultipleOutputs.addNamedOutput(job, "namedOutput", outputFormatClass, keyClass, valueClass);
+        // MultipleOutputs.addNamedOutput(job, "namedOutput", outputFormatClass, keyClass, valueClass);
 
         if (!job.waitForCompletion(true)) {
             throw new RuntimeException("Job failed!");
         }
+
+        System.out.println("Job completed!");
     }
 }
