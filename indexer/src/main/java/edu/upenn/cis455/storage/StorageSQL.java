@@ -14,8 +14,8 @@ import org.apache.logging.log4j.Logger;
 public class StorageSQL implements StorageInterface, AutoCloseable {
     final static Logger logger = LogManager.getLogger(StorageSQL.class);
 
-    static final String USER = "postgres";
-    static final String PASS = "cis555db";
+    private static final String USER = "postgres";
+    private static final String PASS = "cis555db";
 
     private Connection dbConn = null;
 
@@ -24,7 +24,7 @@ public class StorageSQL implements StorageInterface, AutoCloseable {
 
         // // Get credentials from env variables
         // String user = System.getProperty("DATABASE_USER");
-        // String password = System.getProperty("DATABASE_PASS");
+        // String pass = System.getProperty("DATABASE_PASS");
 
         try {
             Class.forName("org.postgresql.Driver");

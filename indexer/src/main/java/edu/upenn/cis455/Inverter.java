@@ -59,14 +59,14 @@ public class Inverter extends Reducer<ParserWritable, ParserWritable, Text, Text
         int docFreq = hitLists.size();
         logger.debug("Inverter outputting word: {}, df: {}", term, docFreq);
         
-        StringBuilder outputBuilder = new StringBuilder(String.format("%d|", docFreq));
+        StringBuilder outputBuilder = new StringBuilder(String.format("%d:", docFreq));
         for (var entry : hitLists.entrySet()) {
             int docId = entry.getKey();
             HitList hitList = entry.getValue();
             int termFreq = hitList.size();
             
             String joinedHits = hitList.getHits().stream().map(String::valueOf).collect(Collectors.joining(","));
-            outputBuilder.append(String.format("%d,%d:%s;", docId, termFreq, joinedHits));
+            outputBuilder.append(String.format("\n<%d,%d:%s>", docId, termFreq, joinedHits));
         }
         context.write(new Text(term), new Text(outputBuilder.toString()));
     }

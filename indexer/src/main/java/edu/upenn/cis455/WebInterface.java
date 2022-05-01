@@ -25,7 +25,7 @@ public class WebInterface {
         }
 
         get("/retrieve", (req, res) -> {
-
+            return null;
         });
 
     }
