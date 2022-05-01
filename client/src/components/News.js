@@ -24,7 +24,7 @@ function News(props) {
       setItems(data.slice(0, pageSize));
     }
     fetch();
-  }, []);
+  }, [query]);
 
   function handleChange(e, p) {
     setPage(p);

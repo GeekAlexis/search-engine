@@ -70,14 +70,14 @@ function Business(props) {
             variant="subtitle2"
             sx={{
               display: 'inline-block',
-              fontSize: 14,
+              fontSize: 12.75,
               lineHeight: 1.35,
             }}
           >
-            {data.price} ·{' '}
+            {data.price == null ? '' : data.price + ' · '}
             {data.categories.map((category) => category.title).join(', ')}
           </Typography>
-
+          <br />
           <Typography
             variant="subtitle2"
             sx={{ display: 'inline-block', fontSize: 12, lineHeight: 1.25 }}
