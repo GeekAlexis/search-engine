@@ -10,10 +10,10 @@ import static org.apache.logging.log4j.core.config.Configurator.setLevel;
 public class WebInterface {
     public static void main(String[] args) {
         if (args.length < 1 || args.length > 2) {
-            System.err.println("Syntax: WebInterface {path} {root}");
+            System.err.println("Syntax: WebInterface {port} {root}");
             System.exit(1);
         }
 
-        setLevel("edu.upenn.cis.cis455", Level.DEBUG);
+        setLevel("edu.upenn.cis455", Level.DEBUG);
     }
 }

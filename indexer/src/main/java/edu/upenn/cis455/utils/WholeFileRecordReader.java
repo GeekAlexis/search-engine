@@ -14,7 +14,7 @@ import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-public class WholeFileRecordReader extends RecordReader<LongWritable, Text> {
+public class WholeFileRecordReader extends RecordReader<IntWritable, Text> {
     private static final Logger logger = LogManager.getLogger(WholeFileRecordReader.class);
 
     /** The path to the file to read. */
@@ -28,7 +28,7 @@ public class WholeFileRecordReader extends RecordReader<LongWritable, Text> {
     /** Whether this FileSplit has been processed. */
     private boolean mProcessed;
 
-    private final LongWritable mFileId;
+    private final IntWritable mFileId;
     private final Text mFileContent;
 
     /**
@@ -65,7 +65,7 @@ public class WholeFileRecordReader extends RecordReader<LongWritable, Text> {
             throw new RuntimeException("File names cannot be converted to IDs");
         }
 
-        mFileId = new LongWritable(fileID);
+        mFileId = new IntWritable(fileID);
         mFileContent = new Text();
     }
 
@@ -83,7 +83,7 @@ public class WholeFileRecordReader extends RecordReader<LongWritable, Text> {
      * @throws InterruptedException never.
      */
     @Override
-    public LongWritable getCurrentKey() throws IOException, InterruptedException {
+    public IntWritable getCurrentKey() throws IOException, InterruptedException {
         return mFileId;
     }
 

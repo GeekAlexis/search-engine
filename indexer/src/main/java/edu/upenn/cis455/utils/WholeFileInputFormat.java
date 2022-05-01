@@ -12,7 +12,7 @@ import org.apache.hadoop.mapreduce.lib.input.CombineFileInputFormat;
 import org.apache.hadoop.mapreduce.lib.input.CombineFileRecordReader;
 import org.apache.hadoop.mapreduce.lib.input.CombineFileSplit;
 
-public class WholeFileInputFormat extends CombineFileInputFormat<LongWritable, Text>{
+public class WholeFileInputFormat extends CombineFileInputFormat<IntWritable, Text>{
 
     @Override
     protected boolean isSplitable(JobContext context, Path file) {
@@ -33,13 +33,13 @@ public class WholeFileInputFormat extends CombineFileInputFormat<LongWritable, T
     */
 
     @Override
-    public RecordReader<LongWritable, Text> createRecordReader(
+    public RecordReader<IntWritable, Text> createRecordReader(
             InputSplit split, TaskAttemptContext context) throws IOException {
 
         if (!(split instanceof CombineFileSplit)) {
             throw new IllegalArgumentException("Split must be a CombineFileSplit");
         }
-        return new CombineFileRecordReader<LongWritable, Text>((CombineFileSplit)split, context, WholeFileRecordReader.class);
+        return new CombineFileRecordReader<IntWritable, Text>((CombineFileSplit)split, context, WholeFileRecordReader.class);
     }
 
 }
