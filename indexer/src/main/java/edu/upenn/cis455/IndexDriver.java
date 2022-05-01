@@ -9,9 +9,10 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
-import org.apache.hadoop.mapreduce.lib.output.MultipleOutputs;
 
 import edu.upenn.cis455.utils.WholeFileInputFormat;
+import edu.upenn.cis455.utils.ParserPartitioner;
+import edu.upenn.cis455.utils.ParserGroupingComparator;
 
 import org.apache.logging.log4j.Level;
 import static org.apache.logging.log4j.core.config.Configurator.setLevel;
@@ -42,6 +43,8 @@ public class IndexDriver {
 
         job.setMapperClass(Parser.class);
         job.setReducerClass(Inverter.class);
+        job.setPartitionerClass(ParserPartitioner.class);
+        job.setGroupingComparatorClass(ParserGroupingComparator.class);
         // job.setNumReduceTasks(5);
 
         FileInputFormat.addInputPath(job, new Path(args[0]));
@@ -52,8 +55,6 @@ public class IndexDriver {
             System.err.println("Failed to delete temporary output directory: " + e);
         }
         FileOutputFormat.setOutputPath(job, outputDir);
-
-        // MultipleOutputs.addNamedOutput(job, "namedOutput", outputFormatClass, keyClass, valueClass);
 
         if (!job.waitForCompletion(true)) {
             throw new RuntimeException("Job failed!");

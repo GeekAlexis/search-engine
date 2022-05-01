@@ -4,9 +4,9 @@ import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
 
-import org.apache.hadoop.io.Writable;
+import org.apache.hadoop.io.WritableComparable;
 
-public class ParserWritable implements Writable {
+public class ParserWritable implements WritableComparable<ParserWritable> {
     private String term;
     private int docId;
     private int pos;
@@ -62,5 +62,17 @@ public class ParserWritable implements Writable {
 
     public void setPos(int pos) {
         this.pos = pos;
+    }
+
+    @Override
+    public int compareTo(ParserWritable other) {
+        int compareVal = this.term.compareTo(other.term);
+        if (compareVal == 0) {
+            compareVal = Integer.compare(this.docId, other.docId);
+        }
+        if (compareVal == 0) {
+            compareVal = Integer.compare(this.pos, other.pos);
+        }
+        return compareVal;
     }
 }

@@ -18,7 +18,7 @@ import edu.upenn.cis455.storage.HitList;
 import edu.upenn.cis455.utils.ParserWritable;
 
 
-public class Inverter extends Reducer<Text, ParserWritable, Text, Text> {
+public class Inverter extends Reducer<ParserWritable, ParserWritable, Text, Text> {
     private static final Logger logger = LogManager.getLogger(Inverter.class);
 
     private Storage store;
@@ -38,9 +38,9 @@ public class Inverter extends Reducer<Text, ParserWritable, Text, Text> {
     }
     
     @Override
-    protected void reduce(Text key, Iterable<ParserWritable> values, Context context) throws IOException, InterruptedException {
+    protected void reduce(ParserWritable key, Iterable<ParserWritable> values, Context context) throws IOException, InterruptedException {
         hitLists.clear();
-        String term = key.toString();
+        String term = key.getTerm();
 
         for (ParserWritable value : values) {
             // term = value.getTerm();
@@ -57,7 +57,7 @@ public class Inverter extends Reducer<Text, ParserWritable, Text, Text> {
         }
         
         int docFreq = hitLists.size();
-        logger.debug("Inverter emitting word: {}, df: {}", term, docFreq);
+        logger.debug("Inverter outputting word: {}, df: {}", term, docFreq);
         
         StringBuilder outputStr = new StringBuilder(String.format("%d:", docFreq));
         for (var entry : hitLists.entrySet()) {
@@ -68,7 +68,7 @@ public class Inverter extends Reducer<Text, ParserWritable, Text, Text> {
             String joinedHits = hitList.getHits().stream().map(String::valueOf).collect(Collectors.joining(","));
             outputStr.append(String.format("%d,%d|%s;", docId, termFreq, joinedHits));
         }
-        context.write(key, new Text(outputStr.toString()));
+        context.write(new Text(term), new Text(outputStr.toString()));
     }
 
     @Override

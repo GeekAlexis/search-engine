@@ -24,7 +24,7 @@ import org.apache.logging.log4j.Logger;
 import edu.upenn.cis455.utils.ParserWritable;
 
 
-public class Parser extends Mapper<IntWritable, Text, Text, ParserWritable> {
+public class Parser extends Mapper<IntWritable, Text, ParserWritable, ParserWritable> {
     private static final Logger logger = LogManager.getLogger(Parser.class);
 
     // private static final String LANG_DETECTOR_PATH = "langdetect-183.bin";
@@ -83,8 +83,8 @@ public class Parser extends Mapper<IntWritable, Text, Text, ParserWritable> {
                 if (!term.isEmpty()) {
                     logger.debug("Parser emitting term: {}, docId: {}, pos: {}", term, docId, pos);
                     // // Partition by first letter of each term
-                    // context.write(new Text(term.substring(0, 1)), new ParserWritable(term, docId, pos));
-                    context.write(new Text(term), new ParserWritable(term, docId, pos));
+                    ParserWritable parserOutput = new ParserWritable(term, docId, pos);
+                    context.write(parserOutput, parserOutput);
                 }
             }
         }
