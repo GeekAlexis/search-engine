@@ -39,17 +39,8 @@ public class Parser extends Mapper<IntWritable, Text, ParserWritable, ParserWrit
     protected void setup(Context context) throws IOException, InterruptedException {
         logger.info("Loading NLP models");
 
-        // Configuration conf = context.getConfiguration();
-        // FileSystem fs = FileSystem.get(conf);
-
         String lang_detector_url = "https://dlcdn.apache.org/opennlp/models/langdetect/1.8.3/langdetect-183.bin";
         String tokenizer_url = "https://dlcdn.apache.org/opennlp/models/ud-models-1.0/opennlp-en-ud-ewt-tokens-1.0-1.9.3.bin";
-        
-        // FSDataOutputStream out = fs.create(new Path(LANG_DETECTOR_PATH));
-        // IOUtils.copyBytes(new URL(lang_detector_url).openStream(), out, conf);
-
-        // out = fs.create(new Path(TOKENIZER_PATH));
-        // IOUtils.copyBytes(new URL(tokenizer_url).openStream(), out, conf);   
         
         try (InputStream modelIn = new URL(tokenizer_url).openStream()) {
             tokenizer = new TokenizerME(new TokenizerModel(modelIn));
@@ -82,7 +73,7 @@ public class Parser extends Mapper<IntWritable, Text, ParserWritable, ParserWrit
                 String term = processToken(tokens[(int)pos]);
                 if (!term.isEmpty()) {
                     logger.debug("Parser emitting term: {}, docId: {}, pos: {}", term, docId, pos);
-                    // // Partition by first letter of each term
+                    // System.out.println("Parser emitting term: " + term + ", docId: " + docId + ", pos: " + pos);
                     ParserWritable parserOutput = new ParserWritable(term, docId, pos);
                     context.write(parserOutput, parserOutput);
                 }

@@ -19,21 +19,21 @@ public class StorageSQL implements StorageInterface, AutoCloseable {
 
     private Connection conn = null;
 
-    public StorageSQL(String url) {
+    /**
+     * 
+     * @param url
+     * @throws ClassNotFoundException
+     * @throws SQLException
+     */
+    public StorageSQL(String url) throws ClassNotFoundException, SQLException {
         logger.debug("Opening SQL database URL: " + url);
-
+        
         // // Get credentials from env variables
         // String user = System.getProperty("DATABASE_USER");
         // String pass = System.getProperty("DATABASE_PASS");
 
-        try {
-            Class.forName("org.postgresql.Driver");
-            conn = DriverManager.getConnection(url, USER, PASS);
-        } catch (ClassNotFoundException | SQLException e) {
-            logger.error("Failed to open database:", e);
-        }
-
-        logger.debug("Opened database successfully");
+        Class.forName("org.postgresql.Driver");
+        conn = DriverManager.getConnection(url, USER, PASS);
     }
 
     /**

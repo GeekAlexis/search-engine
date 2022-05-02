@@ -21,7 +21,7 @@ public class ParserWritable implements WritableComparable<ParserWritable> {
 
     @Override
     public void write(DataOutput out) throws IOException {
-        out.writeBytes(term);
+        out.writeUTF(term);
         out.writeInt(docId);
         out.writeInt(pos);
     }
@@ -31,7 +31,6 @@ public class ParserWritable implements WritableComparable<ParserWritable> {
         term = in.readUTF();
         docId = in.readInt();
         pos = in.readInt();
-        
     }
 
     public static ParserWritable read(DataInput in) throws IOException {

@@ -13,6 +13,7 @@ import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 
 import edu.upenn.cis455.utils.WholeFileInputFormat;
 import edu.upenn.cis455.utils.ParserPartitioner;
+import edu.upenn.cis455.utils.ParserWritable;
 import edu.upenn.cis455.utils.ParserGroupingComparator;
 
 import org.apache.logging.log4j.Level;
@@ -31,6 +32,7 @@ public class IndexDriver {
 
         Configuration conf = new Configuration();
         conf.set("storageDir", args[2]);
+        conf.set("mapreduce.input.fileinputformat.split.maxsize","268435456");
         conf.set("mapreduce.output.textoutputformat.separator", ",");
 
         FileSystem fs = FileSystem.get(new URI(args[1]), conf);
@@ -40,6 +42,8 @@ public class IndexDriver {
         job.setJobName("Indexer");
 
         job.setInputFormatClass(WholeFileInputFormat.class);
+        job.setMapOutputKeyClass(ParserWritable.class);
+        job.setMapOutputValueClass(ParserWritable.class);  
         job.setOutputKeyClass(Text.class);
         job.setOutputValueClass(Text.class);
 

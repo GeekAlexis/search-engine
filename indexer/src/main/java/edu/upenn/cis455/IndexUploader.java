@@ -28,7 +28,7 @@ public class IndexUploader {
     private static final String DB_USER = "postgres";
     private static final String DB_PASS = "cis555db";
 
-    public static void createIndexTables(Connection conn) throws SQLException {
+    public static void createInvertedIndexTables(Connection conn) throws SQLException {
         String hitTable = "CREATE TABLE IF NOT EXISTS \"Hit\" (" +
                           "id SERIAL PRIMARY KEY," +
                           "position INTEGER NOT NULL)";
@@ -56,6 +56,16 @@ public class IndexUploader {
             stmt.executeUpdate(postingTable);
             stmt.executeUpdate(lexiconTable);
         }
+    }
+
+    public static void createForwardIndexTable(Connection conn) throws SQLException {
+        // String forwardTable = "CREATE TABLE IF NOT EXISTS \"DocLength\" (" +
+        //                       "id SERIAL PRIMARY KEY," +
+        //                       "position INTEGER NOT NULL)";
+
+        // try (Statement stmt = conn.createStatement()) {
+        //     stmt.executeUpdate(hitTable);
+        // }
     }
 
     public static void uploadIndexFile(Connection conn, String bucketName, String key) {
@@ -185,8 +195,9 @@ public class IndexUploader {
         }
 
         try (Connection conn = DriverManager.getConnection(args[2], DB_USER, DB_PASS)) {
-            createIndexTables(conn);
+            createInvertedIndexTables(conn);
             uploadIndexFile(conn, args[0], args[1]);
+            createForwardIndexTable(conn);
         } catch (SQLException e) {
             System.err.println("An error occured: " + e);
         }

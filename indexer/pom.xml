@@ -62,13 +62,6 @@
             <artifactId>mockito-core</artifactId>
             <version>3.2.4</version>
         </dependency>
-
-	    <!-- https://mvnrepository.com/artifact/com.sparkjava/spark-core -->
-		<dependency>
-			<groupId>com.sparkjava</groupId>
-			<artifactId>spark-core</artifactId>
-			<version>2.9.3</version>
-		</dependency>
   
         <!-- https://mvnrepository.com/artifact/log4j/log4j -->
 		<dependency>
@@ -215,9 +208,9 @@
 					</execution>
 				</executions>
 				<configuration>
-					<mainClass>edu.upenn.cis455.WebInterface</mainClass>
+					<mainClass>edu.upenn.cis455.BM25Retrieval</mainClass>
 					<arguments>
-						<argument>45555</argument>
+						<argument>jdbc:postgresql://database-1.cnw1rlie1jes.us-east-1.rds.amazonaws.com:5432/postgresdb</argument>
 					</arguments>
 				</configuration>
 			</plugin>
