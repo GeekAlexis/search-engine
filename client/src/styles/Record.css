@@ -1,0 +1,16 @@
+
+.more-icon svg {
+  font-size: 1.25rem;
+}
+
+.more-icon:hover {
+  background-color: inherit !important;
+}
+
+.about {
+  width: 300px;
+}
+
+.about-container {
+  
+}
