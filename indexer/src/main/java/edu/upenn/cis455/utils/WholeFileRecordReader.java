@@ -59,7 +59,7 @@ public class WholeFileRecordReader extends RecordReader<IntWritable, Text> {
         
         int fileID = 0;
         try {
-            String fileName = mFileToRead.getName().split(".")[0];
+            String fileName = mFileToRead.getName();
             fileID = Integer.parseInt(fileName);
         } catch (NumberFormatException e) {
             throw new RuntimeException("File names cannot be converted to IDs");

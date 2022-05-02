@@ -1,6 +1,7 @@
 package edu.upenn.cis455;
 
 import java.io.IOException;
+import java.net.URI;
 
 import org.apache.hadoop.mapreduce.*;
 import org.apache.hadoop.io.*;
@@ -20,6 +21,7 @@ import static org.apache.logging.log4j.core.config.Configurator.setLevel;
 
 public class IndexDriver {
     public static void main(String[] args) throws Exception {
+        // args: s3://555docbucket/in/ s3://indexer-mapreduce/out/ temp/
         if (args.length != 3) {
             System.err.println("Syntax: IndexDriver {input director} {output directory} {storage directory}");
             System.exit(1);
@@ -31,7 +33,7 @@ public class IndexDriver {
         conf.set("storageDir", args[2]);
         conf.set("mapreduce.output.textoutputformat.separator", ",");
 
-        FileSystem fs = FileSystem.get(conf);
+        FileSystem fs = FileSystem.get(new URI(args[1]), conf);
 
         Job job = Job.getInstance(conf);
         job.setJarByClass(IndexDriver.class);

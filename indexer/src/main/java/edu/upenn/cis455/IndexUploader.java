@@ -28,6 +28,36 @@ public class IndexUploader {
     private static final String DB_USER = "postgres";
     private static final String DB_PASS = "cis555db";
 
+    public static void createIndexTables(Connection conn) throws SQLException {
+        String hitTable = "CREATE TABLE IF NOT EXISTS \"Hit\" (" +
+                          "id SERIAL PRIMARY KEY," +
+                          "position INTEGER NOT NULL)";
+
+        // String postingTable = "CREATE TABLE IF NOT EXISTS \"Posting\" (" +
+        //                        "id SERIAL PRIMARY KEY," +
+        //                        "doc_id INTEGER," +
+        //                        "tf INTEGER," +
+        //                        "hit_id_offset INTEGER REFERENCES Hits (id))";
+
+        String postingTable = "CREATE TABLE IF NOT EXISTS \"Posting\" (" +
+                              "id SERIAL PRIMARY KEY," +
+                              "doc_id INTEGER REFERENCES \"Document\" (id)," +
+                              "tf INTEGER," +
+                              "hit_id_offset INTEGER REFERENCES \"Hit\" (id))";
+
+        String lexiconTable = "CREATE TABLE IF NOT EXISTS \"Lexicon\" (" +
+                              "id SERIAL PRIMARY KEY," +
+                              "term TEXT NOT NULL UNIQUE," +
+                              "df INTEGER," +
+                              "posting_id_offset INTEGER REFERENCES \"Posting\" (id))";
+
+        try (Statement stmt = conn.createStatement()) {
+            stmt.executeUpdate(hitTable);
+            stmt.executeUpdate(postingTable);
+            stmt.executeUpdate(lexiconTable);
+        }
+    }
+
     public static void uploadIndexFile(Connection conn, String bucketName, String key) {
         AmazonS3 s3Client = AmazonS3ClientBuilder.standard()
                     .withRegion(CLIENT_REGION)
@@ -83,8 +113,9 @@ public class IndexUploader {
                 else if (postingsMatcher.find()) {
                     int docId = Integer.parseInt(postingsMatcher.group(1));
                     int tf = Integer.parseInt(postingsMatcher.group(2));
-                    
                     hit_ids.clear();
+
+                    // Upload hits for each doc ID
                     try (PreparedStatement pstmtHits = conn.prepareStatement(hitInsert)) {
                         for (String posStr : postingsMatcher.group(3).split(",")) {
                             int position = Integer.parseInt(posStr);
@@ -99,6 +130,7 @@ public class IndexUploader {
                     }
                     System.out.println("Inserted Hit IDs: " + hit_ids);
 
+                    // Now we upload postings for each term
                     try (PreparedStatement pstmtHits = conn.prepareStatement(postingInsert)) {
                         pstmtHits.setInt(1, docId);
                         pstmtHits.setInt(2, tf);
@@ -138,7 +170,7 @@ public class IndexUploader {
 
     public static void main(String[] args) {
         if (args.length != 3) {
-            System.err.println("Syntax: IndexUploader {index bucket} {index key} {database url}");
+            System.err.println("Syntax: IndexUploader {bucket} {key} {database url}");
             System.exit(1);
         }
 
@@ -149,42 +181,14 @@ public class IndexUploader {
         try {
             Class.forName("org.postgresql.Driver");
         } catch (ClassNotFoundException e) {
-            System.err.println("Failed to open database: " + e);
+            System.err.println("Failed to find database driver: " + e);
         }
 
-        try (Connection conn = DriverManager.getConnection(args[2], DB_USER, DB_PASS);
-             Statement stmt = conn.createStatement())
-        {
-            String hitTable = "CREATE TABLE IF NOT EXISTS \"Hit\" (" +
-                              "id SERIAL PRIMARY KEY," +
-                              "position INTEGER NOT NULL)";
-
-            // String postingTable = "CREATE TABLE IF NOT EXISTS \"Posting\" (" +
-            //                        "id SERIAL PRIMARY KEY," +
-            //                        "doc_id INTEGER," +
-            //                        "tf INTEGER," +
-            //                        "hit_id_offset INTEGER REFERENCES Hits (id))";
-
-            String postingTable = "CREATE TABLE IF NOT EXISTS \"Posting\" (" +
-                                  "id SERIAL PRIMARY KEY," +
-                                  "doc_id INTEGER REFERENCES \"Document\" (id)," +
-                                  "tf INTEGER," +
-                                  "hit_id_offset INTEGER REFERENCES \"Hit\" (id))";
-
-            String lexiconTable = "CREATE TABLE IF NOT EXISTS \"Lexicon\" (" +
-                                  "id SERIAL PRIMARY KEY," +
-                                  "term TEXT NOT NULL UNIQUE," +
-                                  "df INTEGER," +
-                                  "posting_id_offset INTEGER REFERENCES \"Posting\" (id))";
-            
-            stmt.executeUpdate(hitTable);
-            stmt.executeUpdate(postingTable);
-            stmt.executeUpdate(lexiconTable);
-
+        try (Connection conn = DriverManager.getConnection(args[2], DB_USER, DB_PASS)) {
+            createIndexTables(conn);
             uploadIndexFile(conn, args[0], args[1]);
-            
         } catch (SQLException e) {
-            System.err.println("Failed to open database: " + e);
+            System.err.println("An error occured: " + e);
         }
     }
 }

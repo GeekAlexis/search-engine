@@ -3,10 +3,14 @@ package edu.upenn.cis455;
 import org.apache.hadoop.mapreduce.*;
 
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.*;
 
 import org.apache.logging.log4j.LogManager;
@@ -28,11 +32,22 @@ public class Inverter extends Reducer<ParserWritable, ParserWritable, Text, Text
     protected void setup(Context context) throws IOException, InterruptedException {
         Configuration conf = context.getConfiguration();
         String storageDir = conf.get("storageDir");
+
+        if (!Files.exists(Paths.get(storageDir))) {
+            try {
+                Files.createDirectory(Paths.get(storageDir));
+            } catch (IOException e) {
+                logger.error("An error occured:", e);
+			    throw new RuntimeException("Unable to create storage directory");
+            }
+        }
+        
 		try {
 			store = (StorageBDB)StorageFactory.getDatabaseInstance(storageDir);
 			hitLists = store.createHitBuffer(context.getTaskAttemptID().getTaskID().getId());
 		}
 		catch (Exception e) {
+            logger.error("An error occured:", e);
 			throw new RuntimeException("Unable to create BDB store in inverter");
 		}
     }

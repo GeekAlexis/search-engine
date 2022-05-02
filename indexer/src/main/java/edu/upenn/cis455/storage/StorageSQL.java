@@ -17,7 +17,7 @@ public class StorageSQL implements StorageInterface, AutoCloseable {
     private static final String USER = "postgres";
     private static final String PASS = "cis555db";
 
-    private Connection dbConn = null;
+    private Connection conn = null;
 
     public StorageSQL(String url) {
         logger.debug("Opening SQL database URL: " + url);
@@ -28,7 +28,7 @@ public class StorageSQL implements StorageInterface, AutoCloseable {
 
         try {
             Class.forName("org.postgresql.Driver");
-            dbConn = DriverManager.getConnection(url, USER, PASS);
+            conn = DriverManager.getConnection(url, USER, PASS);
         } catch (ClassNotFoundException | SQLException e) {
             logger.error("Failed to open database:", e);
         }
@@ -41,7 +41,7 @@ public class StorageSQL implements StorageInterface, AutoCloseable {
      */
     @Override
     public void close() throws SQLException {
-        dbConn.close();
+        conn.close();
     }
     
 }

@@ -4,8 +4,9 @@
     xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>edu.upenn.cis.cis455</groupId>
+    <groupId>edu.upenn.cis455</groupId>
     <artifactId>indexer</artifactId>
+	<packaging>jar</packaging>
     <version>1.0-SNAPSHOT</version>
 
     <name>CIS 455 Indexer</name>
@@ -24,7 +25,6 @@
 		<dependency>
 			<groupId>com.amazonaws</groupId>
 			<artifactId>aws-java-sdk-s3</artifactId>
-			<version>1.12.209</version>
 		</dependency>
 
 		<dependency>
@@ -67,10 +67,9 @@
 		<dependency>
 			<groupId>com.sparkjava</groupId>
 			<artifactId>spark-core</artifactId>
-			<version>2.6.0</version>
+			<version>2.9.3</version>
 		</dependency>
   
-
         <!-- https://mvnrepository.com/artifact/log4j/log4j -->
 		<dependency>
 			<groupId>org.apache.logging.log4j</groupId>
@@ -109,30 +108,6 @@
 			<version>1.10.3</version>
 		</dependency>
 
-	    <dependency>
-			<groupId>com.fasterxml.jackson.dataformat</groupId>
-			<artifactId>jackson-dataformat-yaml</artifactId>
-			<version>2.9.1</version>
-		</dependency>
-		<!-- https://mvnrepository.com/artifact/com.fasterxml.jackson.core/jackson-core -->
-		<dependency>
-			<groupId>com.fasterxml.jackson.core</groupId>
-			<artifactId>jackson-core</artifactId>
-			<version>2.9.1</version>
-		</dependency>
-		<!-- https://mvnrepository.com/artifact/com.fasterxml.jackson.core/jackson-core -->
-		<dependency>
-			<groupId>com.fasterxml.jackson.core</groupId>
-			<artifactId>jackson-databind</artifactId>
-			<version>2.9.1</version>
-		</dependency>
-		<!-- https://mvnrepository.com/artifact/com.fasterxml.jackson.core/jackson-core -->
-		<dependency>
-			<groupId>com.fasterxml.jackson.core</groupId>
-			<artifactId>jackson-annotations</artifactId>
-			<version>2.9.1</version>
-		</dependency>
-
    		<!-- https://mvnrepository.com/artifact/org.apache.commons/commons-lang3 -->
 		<dependency>
 			<groupId>org.apache.commons</groupId>
@@ -149,9 +124,21 @@
 
     </dependencies>
 
+	<dependencyManagement>
+		<dependencies>
+			<dependency>
+				<groupId>com.amazonaws</groupId>
+				<artifactId>aws-java-sdk-bom</artifactId>
+				<version>1.11.1000</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
+		</dependencies>
+	</dependencyManagement>
+
   	<build>
    		<plugins>
-			<plugin>
+			<!-- <plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-jar-plugin</artifactId>
 				<version>2.4</version>
@@ -160,18 +147,40 @@
 						<manifest>
 							<addClasspath>true</addClasspath>
 							<classpathPrefix>lib/</classpathPrefix>
-							<mainClass>edu.upenn.cis.cis455.WebInterface</mainClass>
+							<mainClass>edu.upenn.cis455.IndexDriver</mainClass>
 						</manifest>
 					</archive>
 				</configuration>
-			</plugin>
+			</plugin> -->
+			<plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <version>2.1</version>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>shade</goal>
+                        </goals>
+                        <configuration>
+							<transformers>
+								<transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+								<mainClass>edu.upenn.cis455.IndexDriver</mainClass>
+								</transformer>
+							</transformers>
+							<shadedArtifactAttached>true</shadedArtifactAttached>
+							<shadedClassifierName>launcher</shadedClassifierName>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
 			<plugin>
 				<groupId>org.codehaus.mojo</groupId>
 				<artifactId>exec-maven-plugin</artifactId>
 				<version>1.6.0</version>
 				<executions>
 					<execution>
-						<id>webserver</id>
+						<id>server</id>
 						<goals>
 							<goal>java</goal>
 						</goals>
@@ -182,17 +191,31 @@
 							<goal>java</goal>
 						</goals>
 						<configuration>
-							<mainClass>edu.upenn.cis.cis455.Indexer</mainClass>
+							<mainClass>edu.upenn.cis455.IndexDriver</mainClass>
 							<arguments>
-								<argument>8001</argument>
-								<argument>localhost:45555</argument>
-								<argument>storage/node1</argument>
+								<argument>s3://555docbucket/in/</argument>
+								<argument>s3://indexer-mapreduce/out/</argument>
+								<argument>temp/</argument>
+							</arguments>
+						</configuration>
+					</execution>
+					<execution>
+						<id>uploader</id>
+						<goals>
+							<goal>java</goal>
+						</goals>
+						<configuration>
+							<mainClass>edu.upenn.cis455.IndexUploader</mainClass>
+							<arguments>
+								<argument>indexer-mapreduce</argument>
+								<argument>merged-index</argument>
+								<argument>jdbc:postgresql://database-1.cnw1rlie1jes.us-east-1.rds.amazonaws.com:5432/postgresdb</argument>
 							</arguments>
 						</configuration>
 					</execution>
 				</executions>
 				<configuration>
-					<mainClass>edu.upenn.cis.cis455.WebInterface</mainClass>
+					<mainClass>edu.upenn.cis455.WebInterface</mainClass>
 					<arguments>
 						<argument>45555</argument>
 					</arguments>

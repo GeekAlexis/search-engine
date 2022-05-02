@@ -12,17 +12,13 @@ public class WebInterface {
     
 
     public static void main(String[] args) {
-        if (args.length < 1 || args.length > 2) {
-            System.err.println("Syntax: WebInterface {port} {root}");
+        if (args.length < 1) {
+            System.err.println("Syntax: WebInterface {port}");
             System.exit(1);
         }
 
         setLevel("edu.upenn.cis455", Level.DEBUG);
-
         port(Integer.parseInt(args[0]));
-        if (args.length == 2) {
-            staticFiles.externalLocation(args[1]);
-        }
 
         get("/retrieve", (req, res) -> {
             return null;
