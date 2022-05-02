@@ -1,10 +1,10 @@
 package edu.upenn.cis455;
 
 import java.io.BufferedReader;
-import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -29,29 +29,33 @@ public class IndexUploader {
     private static final String DB_PASS = "cis555db";
 
     public static void createInvertedIndexTables(Connection conn) throws SQLException {
-        String hitTable = "CREATE TABLE IF NOT EXISTS \"Hit\" (" +
+        String hitTable = "CREATE TABLE \"Hit\" (" +
                           "id SERIAL PRIMARY KEY," +
                           "position INTEGER NOT NULL)";
 
-        // String postingTable = "CREATE TABLE IF NOT EXISTS \"Posting\" (" +
+        // String postingTable = "CREATE TABLE \"Posting\" (" +
         //                        "id SERIAL PRIMARY KEY," +
         //                        "doc_id INTEGER," +
         //                        "tf INTEGER," +
         //                        "hit_id_offset INTEGER REFERENCES Hits (id))";
 
-        String postingTable = "CREATE TABLE IF NOT EXISTS \"Posting\" (" +
+        String postingTable = "CREATE TABLE \"Posting\" (" +
                               "id SERIAL PRIMARY KEY," +
                               "doc_id INTEGER REFERENCES \"Document\" (id)," +
                               "tf INTEGER," +
                               "hit_id_offset INTEGER REFERENCES \"Hit\" (id))";
 
-        String lexiconTable = "CREATE TABLE IF NOT EXISTS \"Lexicon\" (" +
+        String lexiconTable = "CREATE TABLE \"Lexicon\" (" +
                               "id SERIAL PRIMARY KEY," +
                               "term TEXT NOT NULL UNIQUE," +
                               "df INTEGER," +
                               "posting_id_offset INTEGER REFERENCES \"Posting\" (id))";
 
         try (Statement stmt = conn.createStatement()) {
+            stmt.executeUpdate("DROP TABLE IF EXISTS \"Lexicon\"");
+            stmt.executeUpdate("DROP TABLE IF EXISTS \"Posting\"");
+            stmt.executeUpdate("DROP TABLE IF EXISTS \"Hit\"");
+            
             stmt.executeUpdate(hitTable);
             stmt.executeUpdate(postingTable);
             stmt.executeUpdate(lexiconTable);
@@ -59,123 +63,167 @@ public class IndexUploader {
     }
 
     public static void createForwardIndexTable(Connection conn) throws SQLException {
-        // String forwardTable = "CREATE TABLE IF NOT EXISTS \"DocLength\" (" +
-        //                       "id SERIAL PRIMARY KEY," +
-        //                       "position INTEGER NOT NULL)";
+        String forwardIndexTable = "CREATE TABLE \"ForwardIndex\" AS " +
+                                   "SELECT doc_id, SUM(tf) AS length FROM \"Posting\" GROUP BY doc_id";
 
-        // try (Statement stmt = conn.createStatement()) {
-        //     stmt.executeUpdate(hitTable);
-        // }
+        String addPrimaryKey = "ALTER TABLE \"ForwardIndex\" ADD PRIMARY KEY (doc_id)";
+
+        try (Statement stmt = conn.createStatement()) {
+            stmt.executeUpdate("DROP TABLE IF EXISTS \"ForwardIndex\"");
+
+            stmt.executeUpdate(forwardIndexTable);
+            stmt.executeUpdate(addPrimaryKey);
+        }
     }
 
-    public static void uploadIndexFile(Connection conn, String bucketName, String key) {
+    public static void uploadIndexFile(Connection conn, String bucketName, String key) throws Exception {
         AmazonS3 s3Client = AmazonS3ClientBuilder.standard()
                     .withRegion(CLIENT_REGION)
                     .withCredentials(new ProfileCredentialsProvider())
                     .build();
  
-        Pattern termPattern = Pattern.compile("^(\\p{ASCII}+),(\\d+):$");
+        Pattern termPattern = Pattern.compile("^(.+),(\\d+):$");
         Pattern postingsPattern = Pattern.compile("^<(\\d+),(\\d+):((\\d+,)*\\d+)>$");
 
         String hitInsert = "INSERT INTO \"Hit\" (position) " +
-                           "VALUES (?) RETURNING id";
+                           "VALUES (?)";
         String postingInsert = "INSERT INTO \"Posting\" (doc_id, tf, hit_id_offset) " +
-                               "VALUES (?, ?, ?) RETURNING id";
+                               "VALUES (?, ?, ?)";
         String lexiconInsert = "INSERT INTO \"Lexicon\" (term, df, posting_id_offset) " +
                                "VALUES (?, ?, ?)";
 
         try (S3Object object = s3Client.getObject(new GetObjectRequest(bucketName, key));
              InputStream objectData = object.getObjectContent())
         {
+            int fileSize = (int)object.getObjectMetadata().getContentLength();
+            int totalRead = 0;
+
             List<Integer> posting_ids = new ArrayList<>();
             List<Integer> hit_ids = new ArrayList<>();
         
             String term = null;
             int df = -1;
+
+            PreparedStatement pstmtTerm = conn.prepareStatement(lexiconInsert);
+            PreparedStatement pstmtHit = conn.prepareStatement(hitInsert, Statement.RETURN_GENERATED_KEYS);
+            PreparedStatement pstmtPosting = conn.prepareStatement(postingInsert, Statement.RETURN_GENERATED_KEYS);
         
             // Read the text input stream one line at a time
             BufferedReader reader = new BufferedReader(new InputStreamReader(objectData));
-            String line = null;    
+            String line = null;
+
+            conn.setAutoCommit(false);
 
             while ((line = reader.readLine()) != null) {
                 Matcher termMatcher = termPattern.matcher(line);
                 Matcher postingsMatcher = postingsPattern.matcher(line);
 
                 if (termMatcher.find()) {
-                    // Upload the last term
-                    if (!posting_ids.isEmpty()) {
-                        System.out.println("Inserted Posting IDs: " + posting_ids);
-                        try (PreparedStatement pstmtHits = conn.prepareStatement(lexiconInsert)) {
-                            pstmtHits.setString(1, term);
-                            pstmtHits.setInt(2, df);
-                            pstmtHits.setInt(3, posting_ids.get(0));
-    
-                            pstmtHits.executeUpdate();
+                    // Add the last term
+                    if (term != null) {
+                        try {
+                            pstmtPosting.executeBatch();
+
+                            ResultSet rs = pstmtPosting.getGeneratedKeys();
+                            posting_ids.clear();
+                            while (rs.next()) {
+                                posting_ids.add(rs.getInt(1));
+                            }
+                            // System.out.println("Inserted Posting IDs: " + posting_ids);
+
+                            pstmtTerm.setString(1, term);
+                            pstmtTerm.setInt(2, df);
+                            pstmtTerm.setInt(3, Collections.min(posting_ids));
+                            
+                            pstmtTerm.addBatch();
                         } catch (SQLException e) {
-                            System.err.println("An error occured when uploading to Lexicon: " + e);
+                            System.err.println("An error occured when uploading to Posting and Lexicon: " + e);
                         }
                     }
-                    posting_ids.clear();
-
+                    
                     term = termMatcher.group(1);
                     df = Integer.parseInt(termMatcher.group(2));
                 }
                 else if (postingsMatcher.find()) {
                     int docId = Integer.parseInt(postingsMatcher.group(1));
                     int tf = Integer.parseInt(postingsMatcher.group(2));
-                    hit_ids.clear();
-
-                    // Upload hits for each doc ID
-                    try (PreparedStatement pstmtHits = conn.prepareStatement(hitInsert)) {
+                    
+                    try {
+                        // Add hits for each doc ID
                         for (String posStr : postingsMatcher.group(3).split(",")) {
                             int position = Integer.parseInt(posStr);
-                            pstmtHits.setInt(1, position);
+                            
+                            pstmtHit.setInt(1, position);
+                            pstmtHit.addBatch();
+                        }
 
-                            ResultSet rs = pstmtHits.executeQuery();
-                            rs.next();
+                        pstmtHit.executeBatch();
+                        
+                        ResultSet rs = pstmtHit.getGeneratedKeys();
+                        hit_ids.clear();
+                        while (rs.next()) {
                             hit_ids.add(rs.getInt(1));
                         }
+                        // System.out.println("Inserted Hit IDs: " + hit_ids);
+
                     } catch (SQLException e) {
                         System.err.println("An error occured when uploading to Hits: " + e);
-                    }
-                    System.out.println("Inserted Hit IDs: " + hit_ids);
+                    }                    
 
-                    // Now we upload postings for each term
-                    try (PreparedStatement pstmtHits = conn.prepareStatement(postingInsert)) {
-                        pstmtHits.setInt(1, docId);
-                        pstmtHits.setInt(2, tf);
-                        pstmtHits.setInt(3, hit_ids.get(0));
+                    // Now we add postings for each term
+                    try {
+                        pstmtPosting.setInt(1, docId);
+                        pstmtPosting.setInt(2, tf);
+                        pstmtPosting.setInt(3, Collections.min(hit_ids));
+                        pstmtPosting.addBatch();
 
-                        ResultSet rs = pstmtHits.executeQuery();
-                        rs.next();
-                        posting_ids.add(rs.getInt(1));
+                        // ResultSet rs = pstmtPosting.getGeneratedKeys();
+                        // rs.next();
+                        // posting_ids.add(rs.getInt(1));
                     } catch (SQLException e) {
-                        System.err.println("An error occured when uploading to Postings: " + e);
+                        System.err.println("An error occured when adding Posting batch: " + e);
                     }
                 }
                 else {
-                    System.err.println("Failed to parse line in index file");
+                    System.err.println("Failed to parse line in index file: " + line);
                 }
+
+                totalRead += line.length() + 1;
+                System.out.println("Progress ===> " + String.format("%.3f%%" , (double)totalRead / fileSize * 100));
             }
 
-            // Upload the last term
-            if (!posting_ids.isEmpty()) {
-                System.out.println("Inserted Posting IDs: " + posting_ids);
-                try (PreparedStatement pstmtHits = conn.prepareStatement(lexiconInsert)) {
-                    pstmtHits.setString(1, term);
-                    pstmtHits.setInt(2, df);
-                    pstmtHits.setInt(3, posting_ids.get(0));
+            // Add the last term
+            if (term != null) {    
+                try {
+                    pstmtPosting.executeBatch();
 
-                    pstmtHits.executeUpdate();
+                    ResultSet rs = pstmtPosting.getGeneratedKeys();
+                    posting_ids.clear();
+                    while (rs.next()) {
+                        posting_ids.add(rs.getInt(1));
+                    }
+                    // System.out.println("Inserted Posting IDs: " + posting_ids);
+
+                    pstmtTerm.setString(1, term);
+                    pstmtTerm.setInt(2, df);
+                    pstmtTerm.setInt(3, Collections.min(posting_ids));
+                    
+                    pstmtTerm.addBatch();
                 } catch (SQLException e) {
-                    System.err.println("An error occured when uploading to Lexicon: " + e);
+                    System.err.println("An error occured when uploading to Posting and Lexicon: " + e);
                 }
             }
-                
-        } catch (IOException e) {
-            System.err.println("An error occured: " + e);
+
+            // Upload all terms
+            pstmtTerm.executeBatch();
+            conn.commit();
+            conn.setAutoCommit(true);
+
+            pstmtTerm.close();
+            pstmtPosting.close();
+            pstmtHit.close();
+            reader.close();
         }
-        
     }
 
     public static void main(String[] args) {
@@ -195,11 +243,19 @@ public class IndexUploader {
         }
 
         try (Connection conn = DriverManager.getConnection(args[2], DB_USER, DB_PASS)) {
+            System.err.println("Creating inverted index tables...");
             createInvertedIndexTables(conn);
+            
+            System.err.println("Uploading index file...");
             uploadIndexFile(conn, args[0], args[1]);
+
+            System.err.println("Creating forward index table...");
             createForwardIndexTable(conn);
-        } catch (SQLException e) {
+
+            System.err.println("Done!");
+        } catch (Exception e) {
             System.err.println("An error occured: " + e);
         }
+        
     }
 }

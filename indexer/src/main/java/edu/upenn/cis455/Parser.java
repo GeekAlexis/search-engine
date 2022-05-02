@@ -71,7 +71,7 @@ public class Parser extends Mapper<IntWritable, Text, ParserWritable, ParserWrit
             String[] tokens = tokenizer.tokenize(docText);
             for (int pos = 0; pos < tokens.length; pos++) {
                 String term = processToken(tokens[(int)pos]);
-                if (!term.isEmpty()) {
+                if (term != null) {
                     logger.debug("Parser emitting term: {}, docId: {}, pos: {}", term, docId, pos);
                     // System.out.println("Parser emitting term: " + term + ", docId: " + docId + ", pos: " + pos);
                     ParserWritable parserOutput = new ParserWritable(term, docId, pos);
@@ -89,9 +89,9 @@ public class Parser extends Mapper<IntWritable, Text, ParserWritable, ParserWrit
         for (var normalizer : normalizers) {
             token = normalizer.normalize(token).toString();
         }
-        // Remove whitespace or single punctuation
-        if (token.matches("\\s+") || token.matches("\\p{Punct}")) {
-            token = "";
+        // Remove words that contain whitespace or all punctuations
+        if (token.matches(".*\\s.*") || token.matches("\\p{Punct}+")) {
+            return null;
         }
         // Convert to lowercase and stem
         return stemmer.stem(token.toLowerCase()).toString();

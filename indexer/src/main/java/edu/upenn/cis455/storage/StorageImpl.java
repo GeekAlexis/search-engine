@@ -17,8 +17,8 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 
-public class StorageBDB implements StorageInterface, AutoCloseable {
-    final static Logger logger = LogManager.getLogger(StorageBDB.class);
+public class StorageImpl implements StorageInterface, AutoCloseable {
+    final static Logger logger = LogManager.getLogger(StorageImpl.class);
     
     private Environment env;
     private List<EntityStore> stores = new ArrayList<>();
@@ -29,7 +29,7 @@ public class StorageBDB implements StorageInterface, AutoCloseable {
      * @throws DatabaseException
      * @throws FileNotFoundException
      */
-    public StorageBDB(String directory) throws DatabaseException, FileNotFoundException {
+    public StorageImpl(String directory) throws DatabaseException, FileNotFoundException {
         logger.debug("Opening BDB directory in: " + directory);
 
         // Create environment
@@ -38,6 +38,7 @@ public class StorageBDB implements StorageInterface, AutoCloseable {
         env = new Environment(new File(directory), envConfig);
     }
 
+    @Override
     public Map<Integer, HitList> createHitBuffer(int executorId) {
         // Create new entity store
         StoreConfig storeConfig = new StoreConfig();

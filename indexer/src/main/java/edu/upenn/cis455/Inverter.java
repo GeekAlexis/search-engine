@@ -14,7 +14,7 @@ import org.apache.hadoop.io.*;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import edu.upenn.cis455.storage.StorageBDB;
+import edu.upenn.cis455.storage.StorageImpl;
 import edu.upenn.cis455.storage.StorageFactory;
 import edu.upenn.cis455.storage.HitList;
 import edu.upenn.cis455.utils.ParserWritable;
@@ -23,7 +23,7 @@ import edu.upenn.cis455.utils.ParserWritable;
 public class Inverter extends Reducer<ParserWritable, ParserWritable, Text, Text> {
     private static final Logger logger = LogManager.getLogger(Inverter.class);
 
-    private StorageBDB store;
+    private StorageImpl store;
     private Map<Integer, HitList> hitLists;
 
     @Override
@@ -41,7 +41,7 @@ public class Inverter extends Reducer<ParserWritable, ParserWritable, Text, Text
         }
         
 		try {
-			store = (StorageBDB)StorageFactory.getDatabaseInstance(storageDir);
+			store = (StorageImpl)StorageFactory.getDatabaseInstance(storageDir);
 			hitLists = store.createHitBuffer(context.getTaskAttemptID().getTaskID().getId());
 		}
 		catch (Exception e) {

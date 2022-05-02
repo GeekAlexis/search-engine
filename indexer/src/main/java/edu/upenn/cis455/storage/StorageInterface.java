@@ -1,5 +1,7 @@
 package edu.upenn.cis455.storage;
 
+import java.util.Map;
+
 public interface StorageInterface {
-    // interface for storage factory
+    Map<Integer, HitList> createHitBuffer(int executorId);
 }
