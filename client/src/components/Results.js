@@ -9,7 +9,7 @@ const record = {
   path: '› wiki › Search_engine',
   title: 'Search engine - Wikipedia',
   excerpt:
-    'A search engine is a software system that is designed to carry out web searches. They search the World Wide Web in a systematic way for particular ...',
+    'A <span>search</span> engine is a software system that is designed to carry out web searches. They search the World Wide Web in a systematic way for particular ...',
 };
 
 const data = Array(100).fill(record);

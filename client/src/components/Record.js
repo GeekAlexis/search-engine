@@ -10,6 +10,7 @@ import IconButton from '@mui/material/IconButton';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import About from './About';
 import PropTypes from 'prop-types';
+import parse from 'html-react-parser';
 import '../styles/Record.css';
 
 function Record(props) {
@@ -49,7 +50,9 @@ function Record(props) {
         >
           {data.title}
         </Link>
-        <Typography variant="body2">{data.excerpt}</Typography>
+        <Typography className="excerpt" variant="body2">
+          {parse(data.excerpt)}
+        </Typography>
       </CardContent>
     </Card>
   );
