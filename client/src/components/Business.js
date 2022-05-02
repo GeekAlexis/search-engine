@@ -77,10 +77,15 @@ function Business(props) {
             {data.price == null ? '' : data.price + ' · '}
             {data.categories.map((category) => category.title).join(', ')}
           </Typography>
-          <br />
+
           <Typography
             variant="subtitle2"
-            sx={{ display: 'inline-block', fontSize: 12, lineHeight: 1.25 }}
+            sx={{
+              display: 'block',
+              fontSize: 12,
+              lineHeight: 1.25,
+              marginTop: 0.25,
+            }}
           >
             <span className="span">Service options: </span>
             {data.transactions.map((transaction) => transaction).join(' · ')}
@@ -89,9 +94,10 @@ function Business(props) {
           <Typography
             variant="subtitle2"
             sx={{
-              display: 'inline-block',
+              display: 'block',
               fontSize: 12,
-              lineHeight: 1.35,
+              lineHeight: 1.25,
+              marginTop: 0.25,
             }}
           >
             <span className="span">Address: </span>
@@ -100,7 +106,7 @@ function Business(props) {
 
           <Typography
             variant="subtitle2"
-            sx={{ fontSize: 12, lineHeight: 1.25 }}
+            sx={{ fontSize: 12, lineHeight: 1.25, marginTop: 0.25 }}
           >
             <span className="span">Phone: </span>
             {data.display_phone}
