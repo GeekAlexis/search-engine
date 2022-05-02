@@ -17,10 +17,15 @@ public class PageRankReducer extends Reducer<Text, Text, Text, Text> {
 				Double vote = null;
 				String content = value.toString();
 				
-				try {
-					vote = Double.parseDouble(content);
-				} catch (Exception e) {
+				if (content.contains("^^^")) {
 					output.append(content);
+				} else {
+					try {
+						vote = Double.parseDouble(content);
+					} catch (Exception e) {
+						e.printStackTrace();
+						System.exit(1);
+					}
 				}
 				
 				if (vote != null) {
@@ -35,6 +40,7 @@ public class PageRankReducer extends Reducer<Text, Text, Text, Text> {
 			
 		} catch (Exception e) {
 			e.printStackTrace();
+			System.exit(1);
 		}
 	}
 	

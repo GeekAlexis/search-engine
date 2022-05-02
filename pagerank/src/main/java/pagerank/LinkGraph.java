@@ -1,9 +1,8 @@
-//package pagerank;
+package pagerank;
 //
 //import java.sql.Connection;
 //import java.sql.DriverManager;
 //import java.sql.Statement;
-//import java.util.HashMap;
 //import java.sql.ResultSet;
 //import java.sql.SQLException;
 //import java.sql.PreparedStatement;
@@ -12,20 +11,24 @@
 //import org.jsoup.Jsoup;
 //
 //
-//public class LinkGraph {
+public class LinkGraph {
 //	
-//	public static void main(String[] args) throws Exception {
+	public static void main(String[] args) throws Exception {
+//		String a = "1^2^^3^^";
+//		String[] b = a.split("^^");
+//		System.out.println(b[1]);
 //		
 //        Connection c = connectDB();
 //        Statement stmt = null;
 //        
 //        try {
 //            stmt = c.createStatement();
-//            String sql = "SELECT * FROM \"Document\" WHERE id <= 200;";
+//            String sql = "SELECT url, link FROM \"smallgraph\" WHERE id <= 26350;";
 //            ResultSet rs = stmt.executeQuery(sql);
 //
 //            while (rs.next()) {
 //                String url = rs.getString("url");
+//                
 //                byte[] bytes = rs.getBytes("content");
 //                String content = new String(bytes);
 //                
@@ -194,7 +197,7 @@
 //            System.exit(0);
 //        }
 //		
-//	}
+	}
 //	
 //	
 //	
@@ -202,4 +205,4 @@
 //
 //	
 //
-//}
+}
