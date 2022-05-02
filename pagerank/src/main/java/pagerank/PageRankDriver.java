@@ -56,14 +56,14 @@ public class PageRankDriver {
 					System.exit(1);
 				}
 				
-//				if (i >= 2) {
-//					try {
-//						fs.delete(new Path("s3://ranksmall/iteration" + Integer.toString(i - 1)), true);
-//					} catch (Exception e) {
-//						e.printStackTrace();
-//						System.exit(1);
-//					}
-//				}			
+				if (i >= 2) {
+					try {
+						fs.delete(new Path("s3://ranksmall/iteration" + Integer.toString(i - 1)), true);
+					} catch (Exception e) {
+						e.printStackTrace();
+						System.exit(1);
+					}
+				}			
 			}
 			
 		} catch (Exception e) {
