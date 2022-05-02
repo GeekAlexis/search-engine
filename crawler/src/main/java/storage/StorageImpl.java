@@ -18,6 +18,7 @@ public class StorageImpl implements StorageInterface {
         this.dbConn = dbConn;
     }
 
+    // Return the total number of documents in the table
     @Override
     public int getCorpusSize() {
         Statement stmt = null;
@@ -38,6 +39,7 @@ public class StorageImpl implements StorageInterface {
         return 0;
     }
 
+    // Add a document to db
     @Override
     public void addDocument(String url, String content) {
         // if url not in db yet
@@ -83,7 +85,7 @@ public class StorageImpl implements StorageInterface {
 //        }
     }
 
-
+    // Retrieve a document by its url
     @Override
     public String getDocumentByUrl(String url) {
         Statement stmt = null;
@@ -112,6 +114,7 @@ public class StorageImpl implements StorageInterface {
         return null;
     }
 
+    // Return a crawled document's last crawled time
     @Override
     public long getCrawledTime(String url) {
         Statement stmt = null;
@@ -132,6 +135,7 @@ public class StorageImpl implements StorageInterface {
         return 0;
     }
 
+    // Check if a document content is seen
     @Override
     public boolean checkSeenContent(String content) {
         if (content == null){
@@ -159,6 +163,7 @@ public class StorageImpl implements StorageInterface {
         return true;
     }
 
+    // Retrive docuemnts by its id in batches
     @Override
     public HashMap<Integer, String> getDocumentByRange(int startIdx, int numDoc){
         HashMap<Integer, String> map = new HashMap<>();
@@ -184,7 +189,7 @@ public class StorageImpl implements StorageInterface {
         return map;
     }
 
-
+    // Close database
     @Override
     public void close() {
         try {

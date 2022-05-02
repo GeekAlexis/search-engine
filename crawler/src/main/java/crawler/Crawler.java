@@ -19,49 +19,6 @@ public class Crawler implements CrawlMaster {
 
 	final static Logger logger = LogManager.getLogger(Crawler.class);
 
-    /**
-     * Main thread
-     */
-    public void start() {
-//    	taskQueue.add(startUrl);
-    }
-
-    /**
-     * We've indexed another document
-     */
-    @Override
-    public void incCount() {
-//    	currCount += 1;
-    }
-
-    /**
-     * Workers can poll this to see if they should exit, ie the crawl is done
-     */
-    @Override
-    public boolean isDone() {
-//        if (currCount == maxCount || taskQueue.isEmpty()) {
-//        	return true;
-//        } else {
-//        	return false;
-//        }
-        return false;
-    }
-
-    /**
-     * Workers should notify when they are processing an URL
-     */
-    @Override
-    public void setWorking(boolean working) {
-    }
-
-    /**
-     * Workers should call this when they exit, so the master knows when it can shut
-     * down
-     */
-    @Override
-    public void notifyThreadExited() {
-    }
-
     private static final String URL_SPOUT= "URL_SPOUT";
     private static final String FETCHER_BOLT = "FETCHER_BOLT";
     private static final String EXTRACTOR_BOLT = "EXTRACTOR_BOLT";
@@ -90,8 +47,8 @@ public class Crawler implements CrawlMaster {
         TopologyBuilder builder = new TopologyBuilder();
 
         builder.setSpout(URL_SPOUT, spout, 1);
-        builder.setBolt(FETCHER_BOLT, fetcherBolt, 8).shuffleGrouping(URL_SPOUT);
-        builder.setBolt(EXTRACTOR_BOLT, extractorBolt, 8).shuffleGrouping(FETCHER_BOLT);
+        builder.setBolt(FETCHER_BOLT, fetcherBolt, 12).shuffleGrouping(URL_SPOUT);
+        builder.setBolt(EXTRACTOR_BOLT, extractorBolt, 12).shuffleGrouping(FETCHER_BOLT);
 
         LocalCluster cluster = new LocalCluster();
         Topology topo = builder.createTopology();
@@ -111,7 +68,6 @@ public class Crawler implements CrawlMaster {
         } catch (ClassNotFoundException e){
             e.printStackTrace();
         }
-
 
 
         Thread.sleep(1000000);
