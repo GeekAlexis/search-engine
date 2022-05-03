@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from "react";
-import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
-import Index from "./components/Index";
-import Main from "./components/Main";
+import React, { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import Index from './components/Index';
+import Main from './components/Main';
 
-import "./App.css";
+import './App.css';
 
 function App() {
   return (
