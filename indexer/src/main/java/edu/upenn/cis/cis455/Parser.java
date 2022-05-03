@@ -23,9 +23,6 @@ import org.apache.logging.log4j.Logger;
 public class Parser extends Mapper<IntWritable, Text, ParserWritable, ParserWritable> {
     private static final Logger logger = LogManager.getLogger(Parser.class);
 
-    // private static final String LANG_DETECTOR_PATH = "langdetect-183.bin";
-    // private static final String TOKENIZER_PATH = "opennlp-en-ud-ewt-tokens-1.0-1.9.3.bin";
-
     private TokenizerME tokenizer;
     private LanguageDetectorME langDetector;
     private SnowballStemmer stemmer;
@@ -69,7 +66,6 @@ public class Parser extends Mapper<IntWritable, Text, ParserWritable, ParserWrit
                 String term = processToken(tokens[(int)pos]);
                 if (term != null) {
                     logger.debug("Parser emitting term: {}, docId: {}, pos: {}", term, docId, pos);
-                    // System.out.println("Parser emitting term: " + term + ", docId: " + docId + ", pos: " + pos);
                     ParserWritable parserOutput = new ParserWritable(term, docId, pos);
                     context.write(parserOutput, parserOutput);
                 }
@@ -88,7 +84,8 @@ public class Parser extends Mapper<IntWritable, Text, ParserWritable, ParserWrit
             return null;
         }
         // Convert to lowercase and stem
-        return stemmer.stem(token.toLowerCase()).toString();
+        token = stemmer.stem(token.toLowerCase()).toString();
+        return token.isBlank() ? null : token;
     }
 
 }

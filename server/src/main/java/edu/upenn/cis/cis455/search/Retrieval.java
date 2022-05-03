@@ -24,6 +24,9 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.PreparedStatement;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import opennlp.tools.util.normalizer.*;
 import opennlp.tools.tokenize.TokenizerModel;
 import opennlp.tools.tokenize.TokenizerME;
@@ -35,7 +38,6 @@ import opennlp.tools.stemmer.snowball.SnowballStemmer;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-
 import org.apache.logging.log4j.Level;
 import static org.apache.logging.log4j.core.config.Configurator.setLevel;
 
@@ -47,8 +49,9 @@ public class Retrieval {
     private static final String USER = "postgres";
     private static final String PASS = "cis555db";
 
-    private static final String[] SPECIAL_TOKENS = {".", "?", "!", ":", ";", "\"", "'"};
+    private static final String[] SPECIAL_TOKENS = {".", ",", "?", "!", ":", ";", "\"", "'"};
     private static final Operation[] DETOKENIZE_RULES = {
+        Operation.MOVE_LEFT,
         Operation.MOVE_LEFT,
         Operation.MOVE_LEFT,
         Operation.MOVE_LEFT,
@@ -67,16 +70,14 @@ public class Retrieval {
     private double bm25K;
     private double bm25B;
     private double pageRankFactor;
-    private int excerptSize;
     
     private int n;
     private double avgDl;
 
-    public Retrieval(String dbUrl, double bm25K, double bm25B, double pageRankFactor, int excerptSize) {
+    public Retrieval(String dbUrl, double bm25K, double bm25B, double pageRankFactor) {
         this.bm25K = bm25K;
         this.bm25B = bm25B;
         this.pageRankFactor = pageRankFactor;
-        this.excerptSize = excerptSize;
 
         logger.info("Loading NLP models");
         try (InputStream modelIn = new URL(TOKENIZER_URL).openStream()) {
@@ -125,6 +126,13 @@ public class Retrieval {
         }
     }
 
+    /**
+     * It takes a query, tokenizes it, normalizes it, removes words that contain whitespace or all
+     * punctuations, converts to lowercase and stems it
+     * 
+     * @param query The query string to be preprocessed.
+     * @return A list of terms
+     */
     public List<String> preprocess(String query) {
         String[] tokens = tokenizer.tokenize(query);
         List<String> terms = new ArrayList<>();
@@ -148,7 +156,7 @@ public class Retrieval {
      * @param terms
      * @return
      */
-    public Map<Integer, DocOccurrence> getDocOccurrences(Set<String> terms) {
+    public Map<Integer, DocOccurrence> findDocOccurrences(Set<String> terms) throws SQLException {
         String termSlots = Collections.nCopies(terms.size(), "?").stream()
             .collect(Collectors.joining(", ", "(", ")"));
 
@@ -157,10 +165,18 @@ public class Retrieval {
         //              "WHERE p.id >= l.posting_id_offset AND p.id < l.posting_id_offset + l.df " +
         //              "AND f.doc_id = p.doc_id AND r.doc_id = p.doc_id AND l.term IN " + termSlots;
 
+        // String sql = "SELECT DISTINCT ON (p.doc_id) p.doc_id, f.length, r.page_rank " +
+        //              "FROM \"Lexicon\" l " +
+        //              "JOIN \"Posting\" p ON p.id >= l.posting_id_offset AND p.id < l.posting_id_offset + l.df " + 
+        //              "JOIN \"ForwardIndex\" f on p.doc_id = f.doc_id " +
+        //              "JOIN \"PageRank\" r on p.doc_id = r.doc_id " +
+        //              "WHERE l.term IN " + termSlots;
+
         String sql = "SELECT DISTINCT ON (p.doc_id) p.doc_id, f.length " +
-                     "FROM \"Lexicon\" l, \"Posting\" p, \"ForwardIndex\" f " +
-                     "WHERE p.id >= l.posting_id_offset AND p.id < l.posting_id_offset + l.df " +
-                     "AND f.doc_id = p.doc_id AND l.term IN " + termSlots;
+                     "FROM \"Lexicon\" l " +
+                     "JOIN \"Posting\" p ON p.id >= l.posting_id_offset AND p.id < l.posting_id_offset + l.df " + 
+                     "JOIN \"ForwardIndex\" f on p.doc_id = f.doc_id " +
+                     "WHERE l.term IN " + termSlots;
 
         logger.debug("SQL for occurrences: {}", sql);
 
@@ -190,9 +206,9 @@ public class Retrieval {
      * 
      * @param terms
      * @param topk
-     * @return
+     * @return null when there is no match
      */
-    public List<RetrievalResult> retrieve(List<String> terms, int topk) {
+    public List<RetrievalResult> retrieve(List<String> terms, int topk, int excerptSize) throws SQLException {
         if (terms.size() == 0) {
             return null;
         }
@@ -207,20 +223,25 @@ public class Retrieval {
             counts.put(term, count + 1);
         }
 
-        Map<Integer, DocOccurrence> occurrences = getDocOccurrences(counts.keySet());
+        Map<Integer, DocOccurrence> occurrences = findDocOccurrences(counts.keySet());
         Map<Integer, Double> bm25Vector = new HashMap<>();
         occurrences.forEach((docId, occurence) -> bm25Vector.put(docId, 0.0));
-        logger.debug(occurrences);
+        logger.debug("Doc occurrences: {}", occurrences);
 
-        // Compute BM25
+        // Compute BM25 for ranking
         for (Map.Entry<String, Integer> entry : counts.entrySet()) {
             String term = entry.getKey();
             int count = entry.getValue();
 
+            // String sql = "SELECT p.doc_id, p.tf, l.df " +
+            //              "FROM \"Lexicon\" l, \"Posting\" p " +
+            //              "WHERE p.id >= l.posting_id_offset AND p.id < l.posting_id_offset + l.df " +
+            //              "AND l.term = ?";
+
             String sql = "SELECT p.doc_id, p.tf, l.df " +
-                         "FROM \"Lexicon\" l, \"Posting\" p " +
-                         "WHERE p.id >= l.posting_id_offset AND p.id < l.posting_id_offset + l.df " +
-                         "AND l.term = ?";
+                         "FROM \"Lexicon\" l " +
+                         "JOIN \"Posting\" p ON p.id >= l.posting_id_offset AND p.id < l.posting_id_offset + l.df " +
+                         "WHERE l.term = ?";
 
             try (PreparedStatement pstmt = conn.prepareStatement(sql)) {        
                 pstmt.setString(1, term);        
@@ -239,7 +260,7 @@ public class Retrieval {
 
         Map<Integer, Double> scoreVector = new HashMap<>();
         occurrences.forEach((docId, occurence) -> {
-            scoreVector.put(docId, computeScore(bm25Vector.get(docId), occurence.getPageRank()));
+            scoreVector.put(docId, computeRankingScore(bm25Vector.get(docId), occurence.getPageRank()));
         });
 
         // Sort and retrieve top K
@@ -289,9 +310,8 @@ public class Retrieval {
 
                 Document parsed = Jsoup.parse(content);
                 String title = parsed.title();
-                String docText = parsed.text();
 
-                String[] tokens = tokenizer.tokenize(docText);
+                String[] tokens = tokenizer.tokenize(parsed.text());
                 String[] excerptTokens = Arrays.copyOfRange(tokens, 0, excerptSize);
                 String excerpt = detokenizer.detokenize(excerptTokens, null) + " ...";
 
@@ -301,7 +321,7 @@ public class Retrieval {
                 logger.error("An error occurred when adding results:", e);
             }
         }
-        
+         
         return results;
     }
 
@@ -321,18 +341,18 @@ public class Retrieval {
         return idf * (bm25K + 1) * (double)tf / (bm25K * length_norm + (double)tf);
     }
 
-    private double computeScore(double bm25, double pageRank) {
+    private double computeRankingScore(double bm25, double pageRank) {
         return bm25 + pageRankFactor * Math.log(pageRank);
     }
 
-    public static void main(String[] args) throws IOException, Exception {
+    public static void main(String[] args) throws Exception {
         if (args.length < 1) {
             System.err.println("Syntax: Retrieval {database url}");
             System.exit(1);
         }
         setLevel("edu.upenn.cis.cis455", Level.DEBUG);
 
-        Retrieval retrieval = new Retrieval(args[0], 1.2, 0.75, 1.0, 50);
+        Retrieval retrieval = new Retrieval(args[0], 1.2, 0.75, 1.0);
         BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
         
         String query = "";
@@ -341,14 +361,19 @@ public class Retrieval {
             query = reader.readLine();
     
             List<String> terms = retrieval.preprocess(query);
+            // List<String> terms = Arrays.asList(query.split("\\s"));
+            // List<String> terms = Arrays.asList(query);
             System.out.println("Key words: " + terms);
-            List<RetrievalResult> results = retrieval.retrieve(terms, 100);
+            List<RetrievalResult> results = retrieval.retrieve(terms, 100, 50);
+
+            // ObjectMapper mapper = new ObjectMapper();
+            // mapper.enableDefaultTyping(ObjectMapper.DefaultTyping.NON_FINAL);
+            // json = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(results);
     
             System.out.println("Results: " + results);    
         }
 
         reader.close();
         retrieval.close();
-       
     }
 }

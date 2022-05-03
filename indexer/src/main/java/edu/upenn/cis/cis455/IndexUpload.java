@@ -176,10 +176,6 @@ public class IndexUpload {
                         pstmtPosting.setInt(2, tf);
                         pstmtPosting.setInt(3, Collections.min(hit_ids));
                         pstmtPosting.addBatch();
-
-                        // ResultSet rs = pstmtPosting.getGeneratedKeys();
-                        // rs.next();
-                        // posting_ids.add(rs.getInt(1));
                     } catch (SQLException e) {
                         System.err.println("An error occured when adding Posting batch: " + e);
                     }
@@ -189,6 +185,7 @@ public class IndexUpload {
                 }
 
                 if (totalRead % 1024 == 0) {
+                    pstmtTerm.executeBatch();
                     conn.commit();
                     System.out.println("Progress ===> " + String.format("%.3f%%", (double)totalRead / fileSize * 100));
                 }
