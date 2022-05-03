@@ -1,11 +1,7 @@
 package edu.upenn.cis.cis455.handlers;
 
-import java.net.HttpURLConnection;
-import java.net.URL;
+import java.sql.SQLException;
 import java.util.List;
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import java.io.IOException;
 
 import spark.Request;
 import spark.Route;
@@ -29,7 +25,7 @@ public class SearchHandler implements Route {
 	private ObjectMapper mapper = new ObjectMapper();
 
 	public SearchHandler(String dbUrl) {
-		retrieval = new Retrieval(dbUrl, 1.2, 0.75, 1.0, 50);
+		retrieval = new Retrieval(dbUrl, 1.2, 0.75, 1.0);
 		mapper.enableDefaultTyping(ObjectMapper.DefaultTyping.NON_FINAL);
 	}
 
@@ -38,14 +34,29 @@ public class SearchHandler implements Route {
 		String query = req.queryParams("query");
 
 		List<String> terms = retrieval.preprocess(query);
-        List<RetrievalResult> results = retrieval.retrieve(terms, 100);
 
+		List<RetrievalResult> results = null;
+		try {
+			results = retrieval.retrieve(terms, 100, 50);
+		} catch (SQLException e) {
+			logger.error("Failed to query database");
+			res.status(500);
+			return e.getMessage();
+		}
+
+		if (results == null) {
+			res.status(204);
+			return "Your search - " + query + " - did not match any pages";
+		}
+
+		res.type("application/json");
 		String json = null;
 		try {
 			json = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(results);
+			logger.debug("Search Results: {}", json);
 			// {[{url, title, excerpt, bm25, page rank, overall score}, …]}
 		} catch (JsonProcessingException e) {
-			logger.error("Failed to serialize job");
+			logger.error("Failed to serialize retrieval results");
 			res.status(500);
 			return e.getMessage();
 		}
