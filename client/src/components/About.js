@@ -7,6 +7,7 @@ import Grid from '@mui/material/Grid';
 import Button from '@mui/material/Button';
 import Fade from '@mui/material/Fade';
 import Paper from '@mui/material/Paper';
+import Divider from '@mui/material/Divider';
 import Dialog from '@mui/material/Dialog';
 import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
@@ -16,7 +17,7 @@ import ClickAwayListener from '@mui/material/ClickAwayListener';
 import PropTypes from 'prop-types';
 
 function About(props) {
-  const { open, setOpen, anchorEl } = props;
+  const { open, setOpen, anchorEl, data } = props;
 
   function handleClickAway() {
     setOpen(false);
@@ -40,13 +41,14 @@ function About(props) {
           <ClickAwayListener onClickAway={handleClickAway}>
             <Fade {...TransitionProps} timeout={350}>
               <Paper>
-                <Box>
-                  <Typography variant="subtitle1">About this result</Typography>
-                </Box>
-                <Box>
+                <Box className="content">
+                  <Typography variant="h6">About this result</Typography>
+                  <Divider />
+                  <Typography variant="body2">BM25: {data.bm25}</Typography>
                   <Typography variant="body2">
-                    Your search & this result
+                    PageRank: {data.pageRank}
                   </Typography>
+                  <Typography variant="body2">Score: {data.score}</Typography>
                 </Box>
               </Paper>
             </Fade>
@@ -61,6 +63,7 @@ About.propTypes = {
   open: PropTypes.bool,
   setOpen: PropTypes.func,
   anchorEl: PropTypes.object,
+  data: PropTypes.object,
 };
 
 export default About;
