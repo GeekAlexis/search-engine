@@ -26,5 +26,5 @@ npm start
 ```sh
 cd server
 mvn clean install
-mvn exec:java
+mvn exec:java {port} {database url}
 ```
