@@ -2,19 +2,40 @@ package edu.upenn.cis.cis455;
 
 public class RetrievalResult {
     private String url;
+    private String baseUrl;
+    private String path;
     private String title;
     private String excerpt;
     private double bm25;
     private double pageRank;
     private double score;
 
-    public RetrievalResult(String url, String title, String excerpt, double bm25, double pageRank, double score) {
+    public RetrievalResult(String url, String baseUrl, String path, String title,
+                           String excerpt, double bm25, double pageRank, double score) {
         this.url = url;
+        this.baseUrl = baseUrl;
+        this.path = path;
         this.title = title;
         this.excerpt = excerpt;
         this.bm25 = bm25;
         this.pageRank = pageRank;
         this.score = score;
+    }
+
+    public String getPath() {
+        return path;
+    }
+
+    public void setPath(String path) {
+        this.path = path;
+    }
+
+    public String getBaseUrl() {
+        return baseUrl;
+    }
+
+    public void setBaseUrl(String baseUrl) {
+        this.baseUrl = baseUrl;
     }
 
     public String getUrl() {
@@ -67,8 +88,8 @@ public class RetrievalResult {
 
     @Override
     public String toString() {
-        return "RetrievalResult [bm25=" + bm25 + ", excerpt=" + excerpt + ", pageRank=" + pageRank + ", score=" + score
-                + ", title=" + title + ", url=" + url + "]";
+        return "RetrievalResult [baseUrl=" + baseUrl + ", bm25=" + bm25 + ", excerpt=" + excerpt + ", pageRank="
+                + pageRank + ", path=" + path + ", score=" + score + ", title=" + title + ", url=" + url + "]";
     }
     
     

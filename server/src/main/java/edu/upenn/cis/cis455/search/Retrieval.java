@@ -72,7 +72,7 @@ public class Retrieval {
     private int n;
     private double avgDl;
 
-    public Retrieval(String dbUri, double bm25K, double bm25B, double pageRankFactor, int excerptSize) {
+    public Retrieval(String dbUrl, double bm25K, double bm25B, double pageRankFactor, int excerptSize) {
         this.bm25K = bm25K;
         this.bm25B = bm25B;
         this.pageRankFactor = pageRankFactor;
@@ -99,7 +99,7 @@ public class Retrieval {
 
         try {
             Class.forName("org.postgresql.Driver");
-            conn = DriverManager.getConnection(dbUri, USER, PASS);
+            conn = DriverManager.getConnection(dbUrl, USER, PASS);
         } catch (Exception e) {
             logger.error("Failed to open database:", e);
         }
@@ -125,7 +125,7 @@ public class Retrieval {
         }
     }
 
-    public List<String> preprocessQuery(String query) throws Exception {
+    public List<String> preprocess(String query) {
         String[] tokens = tokenizer.tokenize(query);
         List<String> terms = new ArrayList<>();
 
@@ -282,9 +282,9 @@ public class Retrieval {
 
             try (PreparedStatement pstmt = conn.prepareStatement(sql)) {        
                 rs.next();        
-                String url = new URL(rs.getString("url"));
+                URL url = new URL(rs.getString("url"));
                 String baseUrl = url.getHost();
-                String path = "› " + String.join(" › ", url.getPath().split('/'));
+                String path = "› " + String.join(" › ", url.getPath().split("/"));
                 String content = new String(rs.getBytes("content"));
 
                 Document parsed = Jsoup.parse(content);
@@ -295,7 +295,7 @@ public class Retrieval {
                 String[] excerptTokens = Arrays.copyOfRange(tokens, 0, excerptSize);
                 String excerpt = detokenizer.detokenize(excerptTokens, null) + " ...";
 
-                results.add(new RetrievalResult(url.toString(), title, excerpt, bm25, pageRank, score));
+                results.add(new RetrievalResult(url.toString(), baseUrl, path, title, excerpt, bm25, pageRank, score));
 
             } catch (Exception e) {
                 logger.error("An error occurred when adding results:", e);
@@ -340,7 +340,7 @@ public class Retrieval {
             System.out.print("Enter query: ");
             query = reader.readLine();
     
-            List<String> terms = retrieval.preprocessQuery(query);
+            List<String> terms = retrieval.preprocess(query);
             System.out.println("Key words: " + terms);
             List<RetrievalResult> results = retrieval.retrieve(terms, 100);
     

@@ -23,7 +23,7 @@ import com.amazonaws.services.s3.model.GetObjectRequest;
 import com.amazonaws.services.s3.model.S3Object;
 
 
-public class IndexUploader {  
+public class IndexUpload {  
     private static final Regions CLIENT_REGION = Regions.US_EAST_1;
     private static final String DB_USER = "postgres";
     private static final String DB_PASS = "cis555db";

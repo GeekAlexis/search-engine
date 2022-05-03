@@ -22,6 +22,22 @@ public class RetrievalResult {
         this.score = score;
     }
 
+    public String getPath() {
+        return path;
+    }
+
+    public void setPath(String path) {
+        this.path = path;
+    }
+
+    public String getBaseUrl() {
+        return baseUrl;
+    }
+
+    public void setBaseUrl(String baseUrl) {
+        this.baseUrl = baseUrl;
+    }
+
     public String getUrl() {
         return url;
     }
@@ -72,8 +88,8 @@ public class RetrievalResult {
 
     @Override
     public String toString() {
-        return "RetrievalResult [bm25=" + bm25 + ", excerpt=" + excerpt + ", pageRank=" + pageRank + ", score=" + score
-                + ", title=" + title + ", url=" + url + "]";
+        return "RetrievalResult [baseUrl=" + baseUrl + ", bm25=" + bm25 + ", excerpt=" + excerpt + ", pageRank="
+                + pageRank + ", path=" + path + ", score=" + score + ", title=" + title + ", url=" + url + "]";
     }
     
     
