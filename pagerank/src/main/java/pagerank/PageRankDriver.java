@@ -11,14 +11,18 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.mapreduce.lib.input.KeyValueTextInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
 
+/**
+ * Driver class for PageRank.
+ */
 public class PageRankDriver {
+	
 	public static void main (String[] args) throws Exception {
 		
 		try {
 			Configuration conf = new Configuration();
-			
 			FileSystem fs = FileSystem.get(new URI("s3://rankmid"), conf);
 			
+			// Run pagerank for each iteration
 			for (int i = 0; i < 10; i++) {
 				String input = "";
 				String output = "s3://rankmid/iteration" + Integer.toString(i + 1);
@@ -29,6 +33,7 @@ public class PageRankDriver {
 					input = "s3://rankmid/iteration" + Integer.toString(i);
 				}
 				
+				// Create job
 				Job job = Job.getInstance(conf);
 				job.setJobName("PageRank");
 				job.setJarByClass(PageRankDriver.class);
@@ -41,6 +46,7 @@ public class PageRankDriver {
 				job.setInputFormatClass(KeyValueTextInputFormat.class);
 				job.setOutputFormatClass(TextOutputFormat.class);
 				
+				// Add input path, delete existing output path, and set output path
 				KeyValueTextInputFormat.addInputPath(job, new Path(input));
 				
 				try {
@@ -56,9 +62,10 @@ public class PageRankDriver {
 					System.exit(1);
 				}
 				
+				// To save storage, delete output from 2 iterations ago
 				if (i >= 2) {
 					try {
-						fs.delete(new Path("s3://ranksmall/iteration" + Integer.toString(i - 1)), true);
+						fs.delete(new Path("s3://rankmid/iteration" + Integer.toString(i - 1)), true);
 					} catch (Exception e) {
 						e.printStackTrace();
 						System.exit(1);
