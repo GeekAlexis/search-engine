@@ -193,7 +193,7 @@
 						</configuration>
 					</execution>
 					<execution>
-						<id>uploader</id>
+						<id>upload</id>
 						<goals>
 							<goal>java</goal>
 						</goals>

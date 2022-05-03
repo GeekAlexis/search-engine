@@ -162,7 +162,7 @@ public class Retrieval {
                      "WHERE p.id >= l.posting_id_offset AND p.id < l.posting_id_offset + l.df " +
                      "AND f.doc_id = p.doc_id AND l.term IN " + termSlots;
 
-        logger.debug(sql);
+        logger.debug("SQL for occurrences: {}", sql);
 
         Map<Integer, DocOccurrence> occurrences = new HashMap<>();
         try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -259,7 +259,7 @@ public class Retrieval {
         String sql = "SELECT url, content" +
                      "FROM \"Document\" " +
                      "WHERE id IN " + docIdSlots;
-        logger.debug(sql);
+        logger.debug("SQL for documents: {}", sql);
 
         ResultSet rs = null;
         try (PreparedStatement pstmt = conn.prepareStatement(sql)) {        
@@ -282,7 +282,6 @@ public class Retrieval {
 
             try (PreparedStatement pstmt = conn.prepareStatement(sql)) {        
                 rs.next();        
-                
                 String url = rs.getString("url");
                 String content = new String(rs.getBytes("content"));
 
@@ -300,7 +299,7 @@ public class Retrieval {
                 logger.error("An error occurred when adding results:", e);
             }
         }
-        // {“data”:  [{url, title, excerpt, tf-idf (for each term/query), page rank, overall score}, …]}
+        // {“data”:  [{url, title, excerpt, bm25, page rank, overall score}, …]}
         
         return results;
     }
