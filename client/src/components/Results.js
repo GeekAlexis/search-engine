@@ -2,7 +2,9 @@ import React, { useState, useEffect } from 'react';
 import Pagination from '@mui/material/Pagination';
 import Record from './Record';
 import PropTypes from 'prop-types';
+import getSearchResults from '../apis/getSearchResults';
 
+/*
 const record = {
   url: 'https://en.wikipedia.org/wiki/Search_engine',
   baseUrl: 'https://en.wikipedia.org',
@@ -13,13 +15,28 @@ const record = {
 };
 
 const data = Array(100).fill(record);
+*/
 
 function Results(props) {
-  // const { data } = props;
+  const { query } = props;
+  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(false);
+
   const [page, setPage] = useState(1);
   const pageSize = 10;
   const pageCount = Math.ceil(data.length / pageSize);
   const [items, setItems] = useState(data.slice(0, pageSize));
+
+  useEffect(() => {
+    async function fetch() {
+      setLoading(true);
+      const data = await getSearchResults(query);
+      setData(data);
+      setLoading(false);
+      setItems(data.slice(0, pageSize));
+    }
+    fetch();
+  }, [query]);
 
   function handleChange(e, p) {
     setPage(p);
@@ -43,7 +60,7 @@ function Results(props) {
 }
 
 Results.propTypes = {
-  data: PropTypes.array,
+  query: PropTypes.string,
 };
 
 export default Results;

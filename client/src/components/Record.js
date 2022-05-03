@@ -37,7 +37,7 @@ function Record(props) {
         <IconButton className="more-icon" size="small" onClick={handleOpen}>
           <MoreVertIcon />
         </IconButton>
-        <About open={open} setOpen={setOpen} anchorEl={anchorEl} />
+        <About open={open} setOpen={setOpen} anchorEl={anchorEl} data={data} />
 
         <br />
         <Link

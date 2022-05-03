@@ -7,10 +7,15 @@
   background-color: inherit !important;
 }
 
-.about {
-  width: 300px;
+.excerpt span {
+  font-weight: bold;
 }
 
-.excerpt span {
-  font-weight: 100;
+.about {
+  width: 240px;
+}
+
+.about .content {
+  margin-left: 10px;
+  margin-right: 10px;
 }
