@@ -6,10 +6,6 @@ import java.net.URL;
 
 import org.apache.hadoop.mapreduce.*;
 import org.apache.hadoop.io.*;
-// import org.apache.hadoop.conf.Configuration;
-// import org.apache.hadoop.fs.FSDataOutputStream;
-// import org.apache.hadoop.fs.FileSystem;
-// import org.apache.hadoop.fs.Path;
 import org.jsoup.Jsoup;
 import opennlp.tools.util.normalizer.*;
 import opennlp.tools.langdetect.LanguageDetectorModel;
@@ -33,7 +29,7 @@ public class Parser extends Mapper<IntWritable, Text, ParserWritable, ParserWrit
     private TokenizerME tokenizer;
     private LanguageDetectorME langDetector;
     private SnowballStemmer stemmer;
-    private CharSequenceNormalizer[] normalizers;
+    private AggregateCharSequenceNormalizer normalizer;
 
     @Override
     protected void setup(Context context) throws IOException, InterruptedException {
@@ -50,13 +46,13 @@ public class Parser extends Mapper<IntWritable, Text, ParserWritable, ParserWrit
             langDetector = new LanguageDetectorME(new LanguageDetectorModel(modelIn));
         }
 
-        normalizers = new CharSequenceNormalizer[] {
+        normalizer = new AggregateCharSequenceNormalizer(
             new EmojiCharSequenceNormalizer(), 
             new UrlCharSequenceNormalizer(),
             new TwitterCharSequenceNormalizer(),
             new NumberCharSequenceNormalizer(),
             new ShrinkCharSequenceNormalizer()
-        };
+        );
 
         stemmer = new SnowballStemmer(SnowballStemmer.ALGORITHM.ENGLISH);
     }
@@ -86,9 +82,7 @@ public class Parser extends Mapper<IntWritable, Text, ParserWritable, ParserWrit
 
     private String processToken(String token) {
         // Normalize
-        for (var normalizer : normalizers) {
-            token = normalizer.normalize(token).toString();
-        }
+        token = normalizer.normalize(token).toString();
         // Remove words that contain whitespace or all punctuations
         if (token.matches(".*\\s.*") || token.matches("\\p{Punct}+")) {
             return null;

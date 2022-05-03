@@ -208,7 +208,7 @@
 					</execution>
 				</executions>
 				<configuration>
-					<mainClass>edu.upenn.cis455.BM25Retrieval</mainClass>
+					<mainClass>edu.upenn.cis455.Retrieval</mainClass>
 					<arguments>
 						<argument>jdbc:postgresql://database-1.cnw1rlie1jes.us-east-1.rds.amazonaws.com:5432/postgresdb</argument>
 					</arguments>

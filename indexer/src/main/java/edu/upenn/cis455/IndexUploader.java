@@ -188,8 +188,10 @@ public class IndexUploader {
                     System.err.println("Failed to parse line in index file: " + line);
                 }
 
+                if (totalRead % 1024 == 0) {
+                    System.out.println("Progress ===> " + String.format("%.3f%%", (double)totalRead / fileSize * 100));
+                }
                 totalRead += line.length() + 1;
-                System.out.println("Progress ===> " + String.format("%.3f%%" , (double)totalRead / fileSize * 100));
             }
 
             // Add the last term
@@ -213,6 +215,7 @@ public class IndexUploader {
                     System.err.println("An error occured when uploading to Posting and Lexicon: " + e);
                 }
             }
+            System.out.println("Progress ===> " + String.format("%.3f%%", (double)totalRead / fileSize * 100));
 
             // Upload all terms
             pstmtTerm.executeBatch();
@@ -243,11 +246,11 @@ public class IndexUploader {
         }
 
         try (Connection conn = DriverManager.getConnection(args[2], DB_USER, DB_PASS)) {
-            System.err.println("Creating inverted index tables...");
-            createInvertedIndexTables(conn);
+            // System.err.println("Creating inverted index tables...");
+            // createInvertedIndexTables(conn);
             
-            System.err.println("Uploading index file...");
-            uploadIndexFile(conn, args[0], args[1]);
+            // System.err.println("Uploading index file...");
+            // uploadIndexFile(conn, args[0], args[1]);
 
             System.err.println("Creating forward index table...");
             createForwardIndexTable(conn);
