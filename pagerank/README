@@ -7,7 +7,7 @@ The first component PageRankDriver is the driver program for map-reduce. It read
 
 The second component PageRankMapper is the mapper for the map-reduce process. In each mapper, it computes the average vote that the url can send. It writes the average vote to each outlink of this url as key and value. It also writes the url's outlink information to the current url.
 
-The third component PageRankReducer is the reducer for the map-reduce process. In each reducer, it sums up the average votes the url receives. It writes the outlink information of this url and its rank to the url as key and value. 
+The third component PageRankReducer is the reducer for the map-reduce process. In each reducer, it sums up the average votes the url receives. It uses damping factor of 0.85 and 0.15 in the process to reduce sinks and hogs. It writes the outlink information of this url and its rank to the url as key and value. 
 
 The last component DataTransfer reads the output data of final map-reduce from S3 and creates a table in RDS to store the rank values.
 
