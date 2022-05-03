@@ -1,4 +1,4 @@
-package edu.upenn.cis455;
+package edu.upenn.cis.cis455;
 
 import java.io.IOException;
 import java.net.URI;
@@ -10,13 +10,13 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
-
-import edu.upenn.cis455.utils.WholeFileInputFormat;
-import edu.upenn.cis455.utils.ParserPartitioner;
-import edu.upenn.cis455.utils.ParserWritable;
-import edu.upenn.cis455.utils.ParserGroupingComparator;
-
 import org.apache.logging.log4j.Level;
+
+import edu.upenn.cis.cis455.utils.ParserGroupingComparator;
+import edu.upenn.cis.cis455.utils.ParserPartitioner;
+import edu.upenn.cis.cis455.utils.ParserWritable;
+import edu.upenn.cis.cis455.utils.WholeFileInputFormat;
+
 import static org.apache.logging.log4j.core.config.Configurator.setLevel;
 
 

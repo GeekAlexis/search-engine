@@ -1,4 +1,4 @@
-package edu.upenn.cis455.utils;
+package edu.upenn.cis.cis455.utils;
 
 import org.apache.hadoop.io.WritableComparable;
 import org.apache.hadoop.io.WritableComparator;

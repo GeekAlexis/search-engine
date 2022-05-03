@@ -1,4 +1,4 @@
-package edu.upenn.cis455;
+package edu.upenn.cis.cis455;
 
 import org.apache.hadoop.mapreduce.*;
 
@@ -14,10 +14,10 @@ import org.apache.hadoop.io.*;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import edu.upenn.cis455.storage.StorageImpl;
-import edu.upenn.cis455.storage.StorageFactory;
-import edu.upenn.cis455.storage.HitList;
-import edu.upenn.cis455.utils.ParserWritable;
+import edu.upenn.cis.cis455.storage.HitList;
+import edu.upenn.cis.cis455.storage.StorageFactory;
+import edu.upenn.cis.cis455.storage.StorageImpl;
+import edu.upenn.cis.cis455.utils.ParserWritable;
 
 
 public class Inverter extends Reducer<ParserWritable, ParserWritable, Text, Text> {

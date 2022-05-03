@@ -1,4 +1,4 @@
-package edu.upenn.cis455;
+package edu.upenn.cis.cis455;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -7,6 +7,8 @@ import java.net.URL;
 import org.apache.hadoop.mapreduce.*;
 import org.apache.hadoop.io.*;
 import org.jsoup.Jsoup;
+
+import edu.upenn.cis.cis455.utils.ParserWritable;
 import opennlp.tools.util.normalizer.*;
 import opennlp.tools.langdetect.LanguageDetectorModel;
 import opennlp.tools.langdetect.LanguageDetectorME;
@@ -16,8 +18,6 @@ import opennlp.tools.stemmer.snowball.SnowballStemmer;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-
-import edu.upenn.cis455.utils.ParserWritable;
 
 
 public class Parser extends Mapper<IntWritable, Text, ParserWritable, ParserWritable> {
