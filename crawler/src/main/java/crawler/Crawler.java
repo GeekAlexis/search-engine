@@ -15,7 +15,7 @@ import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-public class Crawler implements CrawlMaster {
+public class Crawler{
 
 	final static Logger logger = LogManager.getLogger(Crawler.class);
 
