@@ -19,7 +19,6 @@ import edu.upenn.cis.cis455.utils.WholeFileInputFormat;
 
 import static org.apache.logging.log4j.core.config.Configurator.setLevel;
 
-
 public class IndexDriver {
     public static void main(String[] args) throws Exception {
         // args: s3://555docbucket/in/ s3://indexer-mapreduce/out/ temp/

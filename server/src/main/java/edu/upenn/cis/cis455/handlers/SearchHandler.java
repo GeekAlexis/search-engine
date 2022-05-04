@@ -51,7 +51,7 @@ public class SearchHandler implements Route {
 		try {
 			json = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(results);
 			logger.debug("Search Results: {}", json);
-			// Format: {[{url, baseUrl, path, title, excerpt, bm25, page rank, overall score}, ...]}
+			// Format: {[ {url, base url, path, title, excerpt, bm25, page rank, overall score}, ...]}
 		} catch (JsonProcessingException e) {
 			logger.error("Failed to serialize retrieval results");
 			res.status(500);
