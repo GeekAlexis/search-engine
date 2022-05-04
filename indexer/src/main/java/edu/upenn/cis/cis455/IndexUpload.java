@@ -1,8 +1,9 @@
 package edu.upenn.cis.cis455;
 
 import java.io.BufferedReader;
-import java.io.InputStream;
-import java.io.InputStreamReader;
+import java.io.File;
+import java.io.FileReader;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -15,19 +16,8 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.PreparedStatement;
 
-import com.amazonaws.auth.profile.ProfileCredentialsProvider;
-import com.amazonaws.regions.Regions;
-import com.amazonaws.services.s3.AmazonS3;
-import com.amazonaws.services.s3.AmazonS3ClientBuilder;
-import com.amazonaws.services.s3.model.GetObjectRequest;
-import com.amazonaws.services.s3.model.S3Object;
 
-
-public class IndexUpload {  
-    private static final Regions CLIENT_REGION = Regions.US_EAST_1;
-    private static final String DB_USER = "postgres";
-    private static final String DB_PASS = "cis555db";
-
+public class IndexUpload {
     public static void createInvertedIndexTables(Connection conn) throws SQLException {
         String hitTable = "CREATE TABLE \"Hit\" (" +
                           "id SERIAL PRIMARY KEY," +
@@ -76,12 +66,7 @@ public class IndexUpload {
         }
     }
 
-    public static void uploadIndexFile(Connection conn, String bucketName, String key) throws Exception {
-        AmazonS3 s3Client = AmazonS3ClientBuilder.standard()
-                    .withRegion(CLIENT_REGION)
-                    .withCredentials(new ProfileCredentialsProvider())
-                    .build();
- 
+    public static void uploadIndexFile(Connection conn, String indexFile) throws Exception { 
         Pattern termPattern = Pattern.compile("^(.+),(\\d+):$");
         Pattern postingsPattern = Pattern.compile("^<(\\d+),(\\d+):((\\d+,)*\\d+)>$");
 
@@ -92,28 +77,24 @@ public class IndexUpload {
         String lexiconInsert = "INSERT INTO \"Lexicon\" (term, df, posting_id_offset) " +
                                "VALUES (?, ?, ?)";
 
-        try (S3Object object = s3Client.getObject(new GetObjectRequest(bucketName, key));
-             InputStream objectData = object.getObjectContent())
-        {
-            int fileSize = (int)object.getObjectMetadata().getContentLength();
-            int totalRead = 0;
+        long fileSize = new File(indexFile).length();
+        System.out.println("File size: " + fileSize);
 
+        conn.setAutoCommit(false);
+
+        try (BufferedReader reader = new BufferedReader(new FileReader(indexFile, StandardCharsets.UTF_8))) {
             List<Integer> posting_ids = new ArrayList<>();
             List<Integer> hit_ids = new ArrayList<>();
         
             String term = null;
             int df = -1;
-
+    
             PreparedStatement pstmtTerm = conn.prepareStatement(lexiconInsert);
             PreparedStatement pstmtHit = conn.prepareStatement(hitInsert, Statement.RETURN_GENERATED_KEYS);
             PreparedStatement pstmtPosting = conn.prepareStatement(postingInsert, Statement.RETURN_GENERATED_KEYS);
-        
-            // Read the text input stream one line at a time
-            BufferedReader reader = new BufferedReader(new InputStreamReader(objectData));
+
+            long totalRead = 0;
             String line = null;
-
-            conn.setAutoCommit(false);
-
             while ((line = reader.readLine()) != null) {
                 Matcher termMatcher = termPattern.matcher(line);
                 Matcher postingsMatcher = postingsPattern.matcher(line);
@@ -184,7 +165,7 @@ public class IndexUpload {
                     System.err.println("Failed to parse line in index file: " + line);
                 }
 
-                if (totalRead % 1024 == 0) {
+                if (totalRead % 4096 == 0) {
                     pstmtTerm.executeBatch();
                     conn.commit();
                     System.out.println("Progress ===> " + String.format("%.3f%%", (double)totalRead / fileSize * 100));
@@ -218,18 +199,18 @@ public class IndexUpload {
             // Upload all terms
             pstmtTerm.executeBatch();
             conn.commit();
-            conn.setAutoCommit(true);
 
             pstmtTerm.close();
             pstmtPosting.close();
             pstmtHit.close();
-            reader.close();
         }
+
+        conn.setAutoCommit(true);
     }
 
     public static void main(String[] args) {
-        if (args.length != 3) {
-            System.err.println("Syntax: IndexUploader {bucket} {key} {database url}");
+        if (args.length != 2) {
+            System.err.println("Syntax: IndexUploader {index file} {database url}");
             System.exit(1);
         }
 
@@ -243,12 +224,12 @@ public class IndexUpload {
             System.err.println("Failed to find database driver: " + e);
         }
 
-        try (Connection conn = DriverManager.getConnection(args[2], DB_USER, DB_PASS)) {
+        try (Connection conn = DriverManager.getConnection(args[1], Config.DB_USER, Config.DB_PASS)) {
             System.err.println("Creating inverted index tables...");
             createInvertedIndexTables(conn);
             
             System.err.println("Uploading index file...");
-            uploadIndexFile(conn, args[0], args[1]);
+            uploadIndexFile(conn, args[0]);
 
             System.err.println("Creating forward index table...");
             createForwardIndexTable(conn);

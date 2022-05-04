@@ -111,15 +111,28 @@
                     <version>1.6.0</version>
                     <executions>
                         <execution>
+                            <id>server</id>
                             <goals>
                                 <goal>java</goal>
                             </goals>
                         </execution>
+                        <execution>
+                            <id>ir</id>
+                            <goals>
+                                <goal>java</goal>
+                            </goals>
+                            <configuration>
+                                <mainClass>edu.upenn.cis.cis455.search.Retrieval</mainClass>
+                                <arguments>
+                                   <argument>jdbc:postgresql://database-1.cnw1rlie1jes.us-east-1.rds.amazonaws.com:5432/postgresdb</argument>
+                                </arguments>
+                            </configuration>
+					    </execution>
                     </executions>
                     <configuration>
                         <mainClass>edu.upenn.cis.cis455.Server</mainClass>
                         <arguments>
-                            <argument>45555</argument>
+                            <argument>4567</argument>
                             <argument>jdbc:postgresql://database-1.cnw1rlie1jes.us-east-1.rds.amazonaws.com:5432/postgresdb</argument>
                         </arguments>
                     </configuration>
