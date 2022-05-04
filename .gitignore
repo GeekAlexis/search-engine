@@ -48,10 +48,11 @@ Thumbs.db
 *.mov
 *.wmv
 
-.vscode
-Config.java
+**/.vscode
+**/Config.java
+**/merged-index
 
-.settings/
-.classpath
-.project
+**/.settings/
+**/.classpath
+**/.project
 

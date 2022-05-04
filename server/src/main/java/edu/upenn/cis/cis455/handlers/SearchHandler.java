@@ -7,7 +7,6 @@ import spark.Request;
 import spark.Route;
 import spark.Response;
 import spark.HaltException;
-import spark.Session;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -26,13 +25,11 @@ public class SearchHandler implements Route {
 
 	public SearchHandler(String dbUrl) {
 		retrieval = new Retrieval(dbUrl, 1.2, 0.75, 1.0);
-		mapper.enableDefaultTyping(ObjectMapper.DefaultTyping.NON_FINAL);
 	}
 
 	@Override
 	public Object handle(Request req, Response res) throws HaltException {
 		String query = req.queryParams("query");
-
 		List<String> terms = retrieval.preprocess(query);
 
 		List<RetrievalResult> results = null;
@@ -54,7 +51,7 @@ public class SearchHandler implements Route {
 		try {
 			json = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(results);
 			logger.debug("Search Results: {}", json);
-			// {[{url, title, excerpt, bm25, page rank, overall score}, …]}
+			// Format: {[ {url, base url, path, title, excerpt, bm25, page rank, overall score}, ...]}
 		} catch (JsonProcessingException e) {
 			logger.error("Failed to serialize retrieval results");
 			res.status(500);

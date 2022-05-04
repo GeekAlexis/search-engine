@@ -19,7 +19,6 @@ import edu.upenn.cis.cis455.storage.StorageFactory;
 import edu.upenn.cis.cis455.storage.StorageImpl;
 import edu.upenn.cis.cis455.utils.ParserWritable;
 
-
 public class Inverter extends Reducer<ParserWritable, ParserWritable, Text, Text> {
     private static final Logger logger = LogManager.getLogger(Inverter.class);
 
@@ -78,8 +77,8 @@ public class Inverter extends Reducer<ParserWritable, ParserWritable, Text, Text
             HitList hitList = entry.getValue();
             int termFreq = hitList.size();
             
-            String joinedHits = hitList.getHits().stream().map(String::valueOf).collect(Collectors.joining(","));
-            outputBuilder.append(String.format("\n<%d,%d:%s>", docId, termFreq, joinedHits));
+            outputBuilder.append(String.format("\n<%d,%d>", docId, termFreq));
+            hitList.getHits().forEach(hit -> outputBuilder.append(String.format("\n%d;", hit)));
         }
         context.write(new Text(term), new Text(outputBuilder.toString()));
     }

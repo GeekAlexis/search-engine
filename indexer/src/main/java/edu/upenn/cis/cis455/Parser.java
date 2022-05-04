@@ -19,9 +19,11 @@ import opennlp.tools.stemmer.snowball.SnowballStemmer;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-
 public class Parser extends Mapper<IntWritable, Text, ParserWritable, ParserWritable> {
     private static final Logger logger = LogManager.getLogger(Parser.class);
+
+    private static final int MAX_TERM_LEN = 50;
+    private static final int MAX_TERM_PER_DOC = 20000;
 
     private TokenizerME tokenizer;
     private LanguageDetectorME langDetector;
@@ -62,12 +64,19 @@ public class Parser extends Mapper<IntWritable, Text, ParserWritable, ParserWrit
         String docText = Jsoup.parse(docContent).text();
         if (langDetector.predictLanguage(docText).getLang().equals("eng")) {
             String[] tokens = tokenizer.tokenize(docText);
+
+            int nTerms = 0;
             for (int pos = 0; pos < tokens.length; pos++) {
+                if (nTerms > MAX_TERM_PER_DOC) {
+                    break;
+                }
+
                 String term = processToken(tokens[(int)pos]);
                 if (term != null) {
                     logger.debug("Parser emitting term: {}, docId: {}, pos: {}", term, docId, pos);
                     ParserWritable parserOutput = new ParserWritable(term, docId, pos);
                     context.write(parserOutput, parserOutput);
+                    nTerms++;
                 }
             }
         }
@@ -79,13 +88,16 @@ public class Parser extends Mapper<IntWritable, Text, ParserWritable, ParserWrit
     private String processToken(String token) {
         // Normalize
         token = normalizer.normalize(token).toString();
-        // Remove words that contain whitespace or all punctuations
-        if (token.matches(".*\\s.*") || token.matches("\\p{Punct}+")) {
-            return null;
-        }
+        
         // Convert to lowercase and stem
         token = stemmer.stem(token.toLowerCase()).toString();
-        return token.isBlank() ? null : token;
+
+        // Remove terms that contain whitespace or all punctuations
+        if (token.isBlank() || token.matches(".*\\s.*")
+            || token.matches("\\p{Punct}+") || token.length() > MAX_TERM_LEN) {
+            return null;
+        }
+        return token;
     }
 
 }
