@@ -34,7 +34,7 @@ public class SearchHandler implements Route {
 
 		List<RetrievalResult> results = null;
 		try {
-			results = retrieval.retrieve(terms, 100, 50);
+			results = retrieval.retrieve(terms, 10, 50);
 		} catch (SQLException e) {
 			logger.error("Failed to query database");
 			res.status(500);

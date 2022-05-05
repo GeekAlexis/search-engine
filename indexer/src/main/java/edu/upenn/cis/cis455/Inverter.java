@@ -6,7 +6,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.*;
@@ -21,6 +20,8 @@ import edu.upenn.cis.cis455.utils.ParserWritable;
 
 public class Inverter extends Reducer<ParserWritable, ParserWritable, Text, Text> {
     private static final Logger logger = LogManager.getLogger(Inverter.class);
+
+    private static final int MAX_HIT_SIZE = 512;
 
     private StorageImpl store;
     private Map<Integer, HitList> hitLists;
@@ -55,7 +56,6 @@ public class Inverter extends Reducer<ParserWritable, ParserWritable, Text, Text
         String term = key.getTerm();
 
         for (ParserWritable value : values) {
-            // term = value.getTerm();
             int docId = value.getDocId();
             int pos = value.getPos();
 
@@ -64,7 +64,10 @@ public class Inverter extends Reducer<ParserWritable, ParserWritable, Text, Text
                 hitList = new HitList(docId);
             }
 
-            hitList.add(pos);
+            hitList.incTermFreq();
+            if (hitList.size() < MAX_HIT_SIZE) {
+                hitList.add(pos);
+            }
             hitLists.put(docId, hitList);
         }
         
@@ -75,9 +78,8 @@ public class Inverter extends Reducer<ParserWritable, ParserWritable, Text, Text
         for (var entry : hitLists.entrySet()) {
             int docId = entry.getKey();
             HitList hitList = entry.getValue();
-            int termFreq = hitList.size();
             
-            outputBuilder.append(String.format("\n<%d,%d>", docId, termFreq));
+            outputBuilder.append(String.format("\n<%d,%d>", docId, hitList.getTermFreq()));
             hitList.getHits().forEach(hit -> outputBuilder.append(String.format("\n%d;", hit)));
         }
         context.write(new Text(term), new Text(outputBuilder.toString()));

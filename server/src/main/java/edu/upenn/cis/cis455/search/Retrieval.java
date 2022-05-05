@@ -19,10 +19,13 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.text.Normalizer;
 import java.sql.PreparedStatement;
 
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
+import org.springframework.util.StopWatch;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import opennlp.tools.util.normalizer.*;
@@ -120,18 +123,18 @@ public class Retrieval {
 
         // Precompile queries
         try {
-            //  sql = "SELECT DISTINCT ON (p.doc_id) p.doc_id, f.length, r.rank " +
-            //        "FROM \"Lexicon\" l " +
-            //        "JOIN \"Posting\" p ON p.id >= l.posting_id_offset AND p.id < l.posting_id_offset + l.df " +
-            //        "JOIN \"ForwardIndex\" f on p.doc_id = f.doc_id " +
-            //        "JOIN \"PageRank\" r on p.doc_id = r.doc_id " +
-            //        "WHERE l.term = ANY (?)";
-
-            sql = "SELECT DISTINCT ON (p.doc_id) p.doc_id, f.length " +
+            sql = "SELECT DISTINCT ON (p.doc_id) p.doc_id, f.length, r.rank " +
                   "FROM \"Lexicon\" l " +
                   "JOIN \"Posting\" p ON p.id >= l.posting_id_offset AND p.id < l.posting_id_offset + l.df " +
                   "JOIN \"ForwardIndex\" f on p.doc_id = f.doc_id " +
+                  "LEFT JOIN \"PageRankMid\" r on p.doc_id = r.doc_id " +
                   "WHERE l.term = ANY (?)";
+
+            // sql = "SELECT DISTINCT ON (p.doc_id) p.doc_id, f.length " +
+            //       "FROM \"Lexicon\" l " +
+            //       "JOIN \"Posting\" p ON p.id >= l.posting_id_offset AND p.id < l.posting_id_offset + l.df " +
+            //       "JOIN \"ForwardIndex\" f on p.doc_id = f.doc_id " +
+            //       "WHERE l.term = ANY (?)";
             pstmtOcc = conn.prepareStatement(sql);
 
             // sql = "SELECT p.doc_id, p.tf, l.df " +
@@ -143,7 +146,7 @@ public class Retrieval {
                   "FROM \"Lexicon\" l " +
                   "JOIN \"Posting\" p ON p.id >= l.posting_id_offset AND p.id < l.posting_id_offset + l.df " +
                   "WHERE l.term = ANY (?) " +
-                  "GROUP BY l.term";
+                  "GROUP BY l.term, l.df";
             pstmtBm25 = conn.prepareStatement(sql);
 
             // sql = "SELECT url, content " +
@@ -157,7 +160,15 @@ public class Retrieval {
                   "JOIN \"Document\" d ON d.id = p.doc_id " +
                   "JOIN \"Hit\" h on h.id = p.hit_id_offset " +
                   "WHERE l.term = ANY (?) AND d.id = ANY (?) " +
-                  "GROUP BY d.id";
+                  "GROUP BY d.id, d.url, d.content";
+
+            // sql = "SELECT d.id, d.url, d.content, array_agg(h.position order by h.position) " +
+            //       "FROM \"Lexicon\" l " +
+            //       "JOIN \"Posting\" p ON p.id >= l.posting_id_offset AND p.id < l.posting_id_offset + l.df " +
+            //       "JOIN \"Hit\" h on h.id >= p.hit_id_offset AND h.id < p.hit_id_offset + p.tf " +
+            //       "JOIN \"Document\" d ON d.id = p.doc_id " +
+            //       "WHERE l.term = ANY (?) AND d.id = ANY (?) " +
+            //       "GROUP BY d.id, d.url, d.content";
             pstmtMeta = conn.prepareStatement(sql);
 
         } catch (SQLException e) {
@@ -180,9 +191,15 @@ public class Retrieval {
         for (String token : tokens) {
             // Normalize
             token = normalizer.normalize(token).toString();
+            token = Normalizer.normalize(token, Normalizer.Form.NFKD)
+                .replaceAll("[\\p{InCombiningDiacriticalMarks}\\p{Cntrl}]", ""); /* diatrics */
+            token = token.replaceAll("[\u00B4\u02B9\u02BC\u02C8\u0301\u2018\u2019\u201B\u2032\u2034\u2037]", "\'"); /* apostrophe (') */
+            token = token.replaceAll("[\u00AB\u00BB\u02BA\u030B\u030E\u201C\u201D\u201E\u201F\u2033\u2036\u3003\u301D\u301E]", "\""); /* quotation mark (") */
+            token = token.replaceAll("[\u00AD\u2010\u2011\u2012\u2013\u2014\u2212\u2015]", "-"); /* hyphen (-) */
+            token = token.trim().toLowerCase();
 
             // Convert to lowercase and stem
-            token = stemmer.stem(token.toLowerCase()).toString();
+            token = stemmer.stem(token).toString();
 
             // Remove words that contain whitespace or all punctuations
             if (token.isBlank() || token.matches(".*\\s.*") || token.matches("\\p{Punct}+")) {
@@ -207,10 +224,9 @@ public class Retrieval {
             while (rs.next()) {
                 int docId = rs.getInt(1);
                 int docLen = rs.getInt(2);
-                // double pageRank = rs.getDouble(3);
-                // occurrences.put(docId, new DocOccurrence(docId, docLen, pageRank));
-
-                occurrences.put(docId, new DocOccurrence(docId, docLen, 0));
+                // double pageRank = 0.0;
+                double pageRank = rs.getDouble(3);
+                occurrences.put(docId, new DocOccurrence(docId, docLen, pageRank));
             }
         }
         return occurrences;
@@ -229,6 +245,9 @@ public class Retrieval {
             return null;
         }
 
+        StopWatch watch = new StopWatch();
+        watch.start("Fetch doc occurrences");
+
         // Count unique terms
         Map<String, Integer> termCounts = new HashMap<>();
         for (String term : terms) {
@@ -240,9 +259,12 @@ public class Retrieval {
         }
 
         Map<Integer, DocOccurrence> occurrences = findDocOccurrences(termCounts.keySet());
-        logger.debug("Fetched {} doc occurrences: {}", occurrences.size(), occurrences);
+        logger.debug("Fetched {} doc occurrences", occurrences.size());
+        watch.stop();
 
         // Compute BM25 for each term
+        watch.start("Fetch and compute BM25");
+
         // Map<Integer, Double> bm25Vector = new HashMap<>();
         // occurrences.keySet().forEach(docId -> bm25Vector.put(docId, 0.0));
         // for (Map.Entry<String, Integer> entry : termCounts.entrySet()) {
@@ -260,27 +282,28 @@ public class Retrieval {
         //         }
         //     }
         // }
-
+        
         Map<Integer, Double> bm25Vector = new HashMap<>();
         occurrences.keySet().forEach(docId -> bm25Vector.put(docId, 0.0));
 
         pstmtBm25.setArray(1, conn.createArrayOf("text", termCounts.keySet().toArray()));
-        ResultSet rs = pstmtBm25.executeQuery();
-
-        while (rs.next()) {
-            String term = rs.getString(1);
-            int df = rs.getInt(2);
-            Integer[] docIds = (Integer[])rs.getArray(3).getArray();
-            Integer[] tfs = (Integer[])rs.getArray(4).getArray();
-
-            int count = termCounts.get(term);
-            for (int i = 0; i < docIds.length; i++) {
-                double bm25 = computeBM25(tfs[i], df, occurrences.get(docIds[i]).getDl());
-                bm25Vector.put(docIds[i], bm25Vector.get(docIds[i]) + bm25 * count);
+        try (ResultSet rs = pstmtBm25.executeQuery()) {
+            while (rs.next()) {
+                String term = rs.getString(1);
+                int df = rs.getInt(2);
+                Integer[] docIds = (Integer[])rs.getArray(3).getArray();
+                Integer[] tfs = (Integer[])rs.getArray(4).getArray();
+    
+                int count = termCounts.get(term);
+                for (int i = 0; i < docIds.length; i++) {
+                    double bm25 = computeBM25(tfs[i], df, occurrences.get(docIds[i]).getDl());
+                    bm25Vector.put(docIds[i], bm25Vector.get(docIds[i]) + bm25 * count);
+                }
             }
         }
-        rs.close();
+        watch.stop();
 
+        watch.start("Rank topK");
         // Weight bm25 and PageRank in overall score
         Map<Integer, Double> scoreVector = new HashMap<>();
         occurrences.forEach((docId, occurrence) -> {
@@ -293,21 +316,25 @@ public class Retrieval {
             .limit(topk)
             .collect(Collectors.toMap(
                 Map.Entry::getKey, Map.Entry::getValue, (e1, e2) -> e1, LinkedHashMap::new));
+                
+        watch.stop();
 
         if (topkScoreVector.isEmpty()) {
             return null;
         }
 
+        watch.start("Fetch doc metadata");
+        // Collect document urls and metadata
         Map<Integer, RetrievalResult> results = new LinkedHashMap<>();
         topkScoreVector.keySet().forEach(docId -> results.put(docId, null));
-
-        // Collect document urls and metadata
-        pstmtMeta.setArray(1, conn.createArrayOf("string", termCounts.keySet().toArray()));
+        
+        pstmtMeta.setArray(1, conn.createArrayOf("text", termCounts.keySet().toArray()));
         pstmtMeta.setArray(2, conn.createArrayOf("integer", results.keySet().toArray()));
-        rs = pstmtMeta.executeQuery();
+        try (ResultSet rs = pstmtMeta.executeQuery()) {
+            watch.stop();
 
-        while (rs.next()) {
-            try {
+            watch.start("Construct results");
+            while (rs.next()) {
                 int docId = rs.getInt(1);
                 double bm25 = bm25Vector.get(docId);
                 double pageRank = occurrences.get(docId).getPageRank();
@@ -322,14 +349,15 @@ public class Retrieval {
 
                 Document parsed = Jsoup.parse(content);
                 String title = parsed.title();
+
+                // String excerpt = "";
                 String excerpt = getExcerpt(parsed.text(), positions, excerptSize);
 
                 results.put(docId, new RetrievalResult(url.toString(), baseUrl, path, title, excerpt, bm25, pageRank, score));
-            } catch (MalformedURLException e) {
-                logger.error("Retrieved URL is invalid");
             }
+        } catch (MalformedURLException e) {
+            logger.error("Retrieved URL is invalid");
         }
-        rs.close();
 
         // List<RetrievalResult> results = new ArrayList<>();
         // for (Map.Entry<Integer, Double> entry : topkScoreVector.entrySet()) {
@@ -361,6 +389,9 @@ public class Retrieval {
         //     }
         // }
         // rs.close();
+
+        watch.stop();
+        logger.debug(watch.prettyPrint());
 
         return new ArrayList<>(results.values());
     }
@@ -444,7 +475,7 @@ public class Retrieval {
         }
         setLevel("edu.upenn.cis.cis455", Level.DEBUG);
 
-        Retrieval retrieval = new Retrieval(args[0], 1.2, 0.75, 0);
+        Retrieval retrieval = new Retrieval(args[0], 1.2, 0.75, 1.0);
         BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
 
         String query = "";
@@ -456,7 +487,8 @@ public class Retrieval {
             // List<String> terms = Arrays.asList(query.split("\\s"));
             // List<String> terms = Arrays.asList(query);
             System.out.println("Key words: " + terms);
-            List<RetrievalResult> results = retrieval.retrieve(terms, 100, 50);
+
+            List<RetrievalResult> results = retrieval.retrieve(terms, 50, 50);
 
             ObjectMapper mapper = new ObjectMapper();
             String json = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(results);

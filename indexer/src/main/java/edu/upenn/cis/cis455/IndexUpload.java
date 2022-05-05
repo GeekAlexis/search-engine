@@ -17,20 +17,20 @@ import java.sql.PreparedStatement;
 public class IndexUpload {
     public static void createInvertedIndexTables(Connection conn) throws SQLException {
         String hitTable = "CREATE TABLE \"Hit\" (" +
-                          "id INTEGER PRIMARY KEY," +
-                          "position INTEGER NOT NULL)";
+                          "id bigint PRIMARY KEY," +
+                          "position integer not null)";
 
         String postingTable = "CREATE TABLE \"Posting\" (" +
-                              "id INTEGER PRIMARY KEY," +
-                              "doc_id INTEGER REFERENCES \"Document\" (id)," +
-                              "tf INTEGER," +
-                              "hit_id_offset INTEGER REFERENCES \"Hit\" (id))";
+                              "id bigint PRIMARY KEY," +
+                              "doc_id integer REFERENCES \"Document\" (id)," +
+                              "tf integer," +
+                              "hit_id_offset bigint REFERENCES \"Hit\" (id))";
 
         String lexiconTable = "CREATE TABLE \"Lexicon\" (" +
-                              "id SERIAL PRIMARY KEY," +
-                              "term TEXT NOT NULL UNIQUE," +
-                              "df INTEGER," +
-                              "posting_id_offset INTEGER REFERENCES \"Posting\" (id))";
+                              "id serial PRIMARY KEY," +
+                              "term text not null UNIQUE," +
+                              "df integer," +
+                              "posting_id_offset bigint REFERENCES \"Posting\" (id))";
 
         try (Statement stmt = conn.createStatement()) {
             stmt.executeUpdate("DROP TABLE IF EXISTS \"Lexicon\"");
@@ -58,9 +58,9 @@ public class IndexUpload {
     }
 
     public static void uploadIndexFile(Connection conn, String indexFile) throws Exception { 
-        Pattern termPattern = Pattern.compile("^(.+),(\\d+):$");
-        Pattern postingPattern = Pattern.compile("^<(\\d+),(\\d+)>$");
-        Pattern hitPattern = Pattern.compile("^(\\d+);$");
+        Pattern termPattern = Pattern.compile("^(.{1,100}),(\\d{1,10}):$", Pattern.DOTALL);
+        Pattern postingPattern = Pattern.compile("^<(\\d{1,10}),(\\d{1,10})>$");
+        Pattern hitPattern = Pattern.compile("^(\\d{1,10});$");
 
         String hitInsert = "INSERT INTO \"Hit\" (id, position) " +
                            "VALUES (?, ?)";
@@ -85,10 +85,10 @@ public class IndexUpload {
             MatchResult lastTermMatchResult = null;
             MatchResult lastPostingMatchResult = null;
 
-            int hitId = 1;
-            int postingId = 1;
-            int hitIdOffset = 1;
-            int postingIdOffset = 1;
+            long hitId = 1;
+            long hitIdOffset = 1;
+            long postingId = 1;
+            long postingIdOffset = 1;
 
             long totalRead = 0;
             String line = null;
@@ -99,81 +99,91 @@ public class IndexUpload {
 
                 if (termMatcher.find()) {
                     // Add the last term
+                    if (lastPostingMatchResult != null) {           
+                        int docId = Integer.parseInt(lastPostingMatchResult.group(1));
+                        int tf = Integer.parseInt(lastPostingMatchResult.group(2));
+
+                        pstmtPosting.setLong(1, postingId++);
+                        pstmtPosting.setInt(2, docId);
+                        pstmtPosting.setInt(3, tf);
+                        pstmtPosting.setLong(4, hitIdOffset);
+                        pstmtPosting.addBatch();
+                        // System.out.println("docId: " + docId + " hitIdOffset: " + hitIdOffset);
+
+                        hitIdOffset = hitId;
+                    }
                     if (lastTermMatchResult != null) {
-                        try {
-                            String term = lastTermMatchResult.group(1);
-                            int df = Integer.parseInt(lastTermMatchResult.group(2));
+                        String term = lastTermMatchResult.group(1);
+                        int df = Integer.parseInt(lastTermMatchResult.group(2));
 
-                            pstmtTerm.setString(1, term);
-                            pstmtTerm.setInt(2, df);
-                            pstmtTerm.setInt(3, postingIdOffset);
-                            pstmtTerm.addBatch();
+                        pstmtTerm.setString(1, term);
+                        pstmtTerm.setInt(2, df);
+                        pstmtTerm.setLong(3, postingIdOffset);
+                        pstmtTerm.addBatch();
+                        // System.out.println("term: " + term + " postingIdOffset: " + postingIdOffset);
 
-                            postingIdOffset = postingId;
-                        } catch (SQLException e) {
-                            System.err.println("An error occured when batching Posting: " + e);
-                        }
+                        postingIdOffset = postingId;
                     }
                     lastTermMatchResult = termMatcher.toMatchResult();
+                    lastPostingMatchResult = null;
                 }
                 else if (postingMatcher.find()) {      
                     // Now we add postings for each term
                     if (lastPostingMatchResult != null) {           
-                        try {
-                            int docId = Integer.parseInt(lastPostingMatchResult.group(1));
-                            int tf = Integer.parseInt(lastPostingMatchResult.group(2));
+                        int docId = Integer.parseInt(lastPostingMatchResult.group(1));
+                        int tf = Integer.parseInt(lastPostingMatchResult.group(2));
 
-                            pstmtPosting.setInt(1, postingId++);
-                            pstmtPosting.setInt(2, docId);
-                            pstmtPosting.setInt(3, tf);
-                            pstmtPosting.setInt(4, hitIdOffset);
-                            pstmtPosting.addBatch();
+                        pstmtPosting.setLong(1, postingId++);
+                        pstmtPosting.setInt(2, docId);
+                        pstmtPosting.setInt(3, tf);
+                        pstmtPosting.setLong(4, hitIdOffset);
+                        pstmtPosting.addBatch();
+                        // System.out.println("docId: " + docId + " hitIdOffset: " + hitIdOffset);
 
-                            hitIdOffset = hitId;
-                        } catch (SQLException e) {
-                            System.err.println("An error occured when batching Hit: " + e);
-                        }
+                        hitIdOffset = hitId;
                     }
                     lastPostingMatchResult = postingMatcher.toMatchResult();
                 }
                 else if (hitMatcher.find()) {
                     int position = Integer.parseInt(hitMatcher.group(1));
 
-                    try {
-                        pstmtHit.setInt(1, hitId++);
-                        pstmtHit.setInt(2, position);
-                        pstmtHit.addBatch();
-                    } catch (SQLException e) {
-                        System.err.println("An error occured when batching Hit: " + e);
-                    }                    
+                    pstmtHit.setLong(1, hitId++);
+                    pstmtHit.setInt(2, position);
+                    pstmtHit.addBatch();              
                 }
                 else {
                     System.err.println("Failed to parse line in index file: " + line);
                 }
 
-                if (totalRead % (10 * 1024) == 0) {
-                    // pstmtHit.executeLargeBatch();
-                    // pstmtPosting.executeLargeBatch();
-                    // pstmtTerm.executeLargeBatch();
-                    // conn.commit();
+                if (totalRead % (8 * 1024) == 0) {
                     System.out.println("Progress ===> " + String.format("%.3f%%", (double)totalRead / fileSize * 100));
+                    pstmtHit.executeLargeBatch();
+                    pstmtPosting.executeLargeBatch();
+                    pstmtTerm.executeLargeBatch();
+                    conn.commit();
                 }
                 totalRead += line.length() + 1;
             }
 
-            // Add the last term
-            if (lastTermMatchResult != null) {
-                try {
-                    String term = lastTermMatchResult.group(1);
-                    int df = Integer.parseInt(lastTermMatchResult.group(2));
+            // Add the last posting and term
+            if (lastPostingMatchResult != null) {           
+                int docId = Integer.parseInt(lastPostingMatchResult.group(1));
+                int tf = Integer.parseInt(lastPostingMatchResult.group(2));
 
-                    pstmtTerm.setString(1, term);
-                    pstmtTerm.setInt(2, df);
-                    pstmtTerm.setInt(3, postingIdOffset);
-                    pstmtTerm.addBatch();
-                } catch (SQLException e) {
-                    System.err.println("An error occured when batching Posting: " + e);
-                }
+                pstmtPosting.setLong(1, postingId++);
+                pstmtPosting.setInt(2, docId);
+                pstmtPosting.setInt(3, tf);
+                pstmtPosting.setLong(4, hitIdOffset);
+                pstmtPosting.addBatch();
+            }
+            if (lastTermMatchResult != null) {
+                String term = lastTermMatchResult.group(1);
+                int df = Integer.parseInt(lastTermMatchResult.group(2));
+
+                pstmtTerm.setString(1, term);
+                pstmtTerm.setInt(2, df);
+                pstmtTerm.setLong(3, postingIdOffset);
+                pstmtTerm.addBatch();
             }
 
             pstmtHit.executeLargeBatch();
