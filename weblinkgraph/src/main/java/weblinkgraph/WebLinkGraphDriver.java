@@ -17,12 +17,13 @@ import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
 public class WebLinkGraphDriver {
 	
 	public static void main (String[] args) throws Exception {
-		
+				
 		// Set input and output paths in S3
-		String input = "s3://555docbucket/in/";          
-		String output = "s3://graphall/graph/";
+		String input = "s3://555docbucket/in"; 
+		String output = "s3://graphall/output";
 
 		try {
+			// Set configuration for map-reduce and S3 access
 			Configuration conf = new Configuration();
 			FileSystem fs = FileSystem.get(new URI(output), conf);
 			conf.set("mapreduce.input.fileinputformat.split.maxsize", "268435456");	
@@ -65,27 +66,5 @@ public class WebLinkGraphDriver {
 			System.exit(1);
 		}
 	}
-	
-	/**
-	 * Set up database connection to AWS RDS Postgresql.
-	 * @return connection
-	 */
-	public static Connection connectDB() {
 		
-		Connection c = null;
-		
-        try {
-            c = DriverManager
-                    .getConnection("jdbc:postgresql://database-1.cnw1rlie1jes.us-east-1.rds.amazonaws.com:5432/postgresdb",
-                            "postgres", "cis555db");
-            
-        } catch (Exception e) {
-            e.printStackTrace();
-            System.exit(1);
-        }
-        
-        return c;
-	}
-	
-	
 }
