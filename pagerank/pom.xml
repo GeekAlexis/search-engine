@@ -8,7 +8,6 @@
     <name>CIS 455 PageRank</name>
     <url>http://www.cis.upenn.edu/~cis455</url>
     
-    
     <properties>
             <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
             <maven.compiler.source>8</maven.compiler.source>
@@ -187,14 +186,17 @@
               <artifactId>exec-maven-plugin</artifactId>
               <version>1.6.0</version>
               <executions>
-              <execution>
-                <id>pagerank</id>
+			<execution>
+                <id>driver</id>
                 <goals><goal>java</goal></goals>
-              </execution>
-              </executions>
-			  <configuration>
+				 <configuration>
                 <mainClass>pagerank.PageRankDriver</mainClass>
               </configuration>
+              </execution>
+
+			
+			
+              </executions>
             </plugin>
         </plugins>
     </build>
