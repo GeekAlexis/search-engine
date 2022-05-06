@@ -1,9 +1,13 @@
 package edu.upenn.cis.cis455;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileReader;
+import java.io.IOException;
+import java.io.InputStream;
 import java.io.BufferedReader;
 import java.nio.charset.StandardCharsets;
+import java.util.Properties;
 import java.util.regex.MatchResult;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -200,14 +204,23 @@ public class IndexUpload {
     }
 
     public static void main(String[] args) {
-        if (args.length != 2) {
-            System.err.println("Syntax: IndexUploader {index file} {database url}");
+        if (args.length != 1) {
+            System.err.println("Syntax: IndexUploader {index file}");
             System.exit(1);
         }
 
-        // // Get credentials from env variables
-        // String user = System.getProperty("DATABASE_USER");
-        // String pass = System.getProperty("DATABASE_PASS");
+        String dbUrl = null;
+        String dbUser = null;
+        String dbPass = null;
+        try (InputStream in = IndexUpload.class.getClassLoader().getResourceAsStream("config.properties")) {
+            Properties prop = new Properties();
+            prop.load(in);
+            dbUrl = prop.getProperty("db.url");
+            dbUser = prop.getProperty("db.user");
+            dbPass = prop.getProperty("db.pass");
+        } catch (IOException e) {
+            System.err.println("An error occured: " + e);
+        }
 
         try {
             Class.forName("org.postgresql.Driver");
@@ -215,7 +228,7 @@ public class IndexUpload {
             System.err.println("Failed to find database driver: " + e);
         }
 
-        try (Connection conn = DriverManager.getConnection(args[1], Config.DB_USER, Config.DB_PASS)) {
+        try (Connection conn = DriverManager.getConnection(dbUrl, dbUser, dbPass)) {
             System.err.println("Creating inverted index tables...");
             createInvertedIndexTables(conn);
             

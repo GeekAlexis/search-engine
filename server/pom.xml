@@ -101,6 +101,12 @@
 		</dependency>
 
         <dependency>
+            <groupId>com.zaxxer</groupId>
+            <artifactId>HikariCP</artifactId>
+            <version>3.4.5</version>
+        </dependency>
+
+        <dependency>
             <groupId>org.springframework</groupId>
             <artifactId>spring-core</artifactId>
             <version>5.0.3.RELEASE</version>
@@ -129,9 +135,6 @@
                             </goals>
                             <configuration>
                                 <mainClass>edu.upenn.cis.cis455.search.Retrieval</mainClass>
-                                <arguments>
-                                   <argument>jdbc:postgresql://database-1.cnw1rlie1jes.us-east-1.rds.amazonaws.com:5432/postgresdb</argument>
-                                </arguments>
                             </configuration>
 					    </execution>
                     </executions>
@@ -139,7 +142,6 @@
                         <mainClass>edu.upenn.cis.cis455.Server</mainClass>
                         <arguments>
                             <argument>4567</argument>
-                            <argument>jdbc:postgresql://database-1.cnw1rlie1jes.us-east-1.rds.amazonaws.com:5432/postgresdb</argument>
                         </arguments>
                     </configuration>
                 </plugin>

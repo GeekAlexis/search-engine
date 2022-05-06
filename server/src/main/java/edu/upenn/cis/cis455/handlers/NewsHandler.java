@@ -6,17 +6,26 @@ import spark.Response;
 
 import java.net.HttpURLConnection;
 import java.net.URL;
-
+import java.util.Properties;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.IOException;
+import java.io.InputStream;
 
 import spark.HaltException;
-import spark.Session;
-
-import edu.upenn.cis.cis455.Config;
 
 public class NewsHandler implements Route {
+    private String apiKey;
+
+    public NewsHandler() {
+        try (InputStream in = NewsHandler.class.getClassLoader().getResourceAsStream("config.properties")) {
+            Properties prop = new Properties();
+            prop.load(in);
+            apiKey = prop.getProperty("news.apiKey");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
 
     @Override
     public Object handle(Request req, Response res) throws HaltException {
@@ -32,7 +41,7 @@ public class NewsHandler implements Route {
             conn = (HttpURLConnection) url.openConnection();
             conn.setRequestMethod("GET");
             conn.setRequestProperty("Accept", "application/json");
-            conn.setRequestProperty("X-Api-Key", Config.NEWS_API_KEY);
+            conn.setRequestProperty("X-Api-Key", apiKey);
 
             if (conn.getResponseCode() != 200) {
                 throw new RuntimeException("GET request to News API failed: "

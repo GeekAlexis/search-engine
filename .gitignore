@@ -49,8 +49,8 @@ Thumbs.db
 *.wmv
 
 **/.vscode
-**/Config.java
 **/merged-index
+**/config.properties
 
 **/.settings/
 **/.classpath
