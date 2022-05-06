@@ -11,7 +11,7 @@ import static org.apache.logging.log4j.core.config.Configurator.setLevel;
 
 public class Server {
 	public static void main(String[] args) {
-		if (args.length < 2) {
+		if (args.length < 1) {
 			System.err.println("Syntax: Server {port}");
 			System.exit(1);
 		}

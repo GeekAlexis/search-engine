@@ -59,9 +59,10 @@ public class Retrieval {
     private SnowballStemmer stemmer;
     private AggregateCharSequenceNormalizer normalizer;
 
-    private Map<String, TermOccurrence> termCache;
+    private Map<Integer, TermOccurrence> termCache;
     private Map<Integer, DocumentData> docCache;
 
+    private String vecSql;
     private String docSql;
     private String occSql;
     private String metaSql;
@@ -144,23 +145,27 @@ public class Retrieval {
             }
             logger.debug("Precomputed average document length: {}", avgDl);
 
+            vecSql = "SELECT term, id " +
+                     "FROM \"Lexicon\" " +
+                     "WHERE term = ANY (?)";
+
             docSql = "SELECT f.doc_id, f.length, r.rank " +
                      "FROM \"ForwardIndex\" f " +
-                     "LEFT JOIN \"PageRankMid\" r on r.doc_id = f.doc_id " +
+                     "LEFT JOIN \"PageRankTest\" r on r.doc_id = f.doc_id " +
                      "WHERE f.doc_id = ANY (?)";
 
-            occSql = "SELECT l.term, l.df, array_agg(p.doc_id), array_agg(p.tf)" +
+            occSql = "SELECT l.id, l.df, array_agg(p.doc_id), array_agg(p.tf)" +
                      "FROM \"Lexicon\" l " +
                      "JOIN \"Posting\" p ON p.id >= l.posting_id_offset AND p.id < l.posting_id_offset + l.df " +
-                     "WHERE l.term = ANY (?) " +
-                     "GROUP BY l.term, l.df";
+                     "WHERE l.id = ANY (?) " +
+                     "GROUP BY l.id, l.df";
 
             // metaSql = "SELECT d.id, d.url, d.content, array_agg(h.position order by h.position) " +
             //           "FROM \"Lexicon\" l " +
             //           "JOIN \"Posting\" p ON p.id >= l.posting_id_offset AND p.id < l.posting_id_offset + l.df " +
             //           "JOIN \"Document\" d ON d.id = p.doc_id " +
             //           "JOIN \"Hit\" h on h.id = p.hit_id_offset " +
-            //           "WHERE l.term = ANY (?) AND d.id = ANY (?) " +
+            //           "WHERE l.id = ANY (?) AND d.id = ANY (?) " +
             //           "GROUP BY d.id, d.url, d.content";
 
             metaSql = "SELECT d.id, d.url, d.content, array_agg(h.position order by h.position) " +
@@ -168,7 +173,7 @@ public class Retrieval {
                       "JOIN \"Posting\" p ON p.id >= l.posting_id_offset AND p.id < l.posting_id_offset + l.df " +
                       "JOIN \"Hit\" h on h.id >= p.hit_id_offset AND h.id < p.hit_id_offset + p.tf " +
                       "JOIN \"Document\" d ON d.id = p.doc_id " +
-                      "WHERE l.term = ANY (?) AND d.id = ANY (?) " +
+                      "WHERE l.id = ANY (?) AND d.id = ANY (?) " +
                       "GROUP BY d.id, d.url, d.content";
         }
         catch (SQLException e) {
@@ -182,9 +187,9 @@ public class Retrieval {
     * the unique terms.
     * 
     * @param query The query string to be vectorized.
-    * @return A map of the terms and their counts.
+    * @return A map of the term ID and their counts.
     */
-    public Map<String, Integer> vectorize(String query) {
+    public Map<Integer, Integer> vectorize(String query) throws SQLException {
         String[] tokens = threadLocalTokenizer.get().tokenize(query);
         Map<String, Integer> termCounts = new HashMap<>();
 
@@ -213,18 +218,32 @@ public class Retrieval {
             }
             termCounts.put(token, count + 1);
         }
-        return termCounts;
+        logger.debug("Key words: {}", termCounts.keySet());
+
+        Map<Integer, Integer> termVec = new HashMap<>();
+        try (Connection conn = ds.getConnection()) {
+            try (PreparedStatement pstmtVec = conn.prepareStatement(vecSql)) {
+                pstmtVec.setArray(1, conn.createArrayOf("text", termCounts.keySet().toArray()));
+                ResultSet rs = pstmtVec.executeQuery();
+                while (rs.next()) {
+                    String term = rs.getString(1);
+                    int termId = rs.getInt(2);
+                    termVec.put(termId, termCounts.get(term));
+                }
+            }   
+        }
+        return termVec;
     }
 
     /**
      * Rank the documents according to query terms and return the topK results.
      * 
-     * @param termCounts a map of terms and their counts in the query
+     * @param termVec a map of term IDs and their counts in the query
      * @param topk the number of documents to return
      * @return A ordered map of RankScore objects.
      */
-    public Map<Integer, RankScore> rank(Map<String, Integer> termCounts, int topk) throws SQLException {
-        if (termCounts.isEmpty()) {
+    public Map<Integer, RankScore> rank(Map<Integer, Integer> termVec, int topk) throws SQLException {
+        if (termVec.isEmpty()) {
             return null;
         }
 
@@ -235,35 +254,42 @@ public class Retrieval {
         StopWatch watch = new StopWatch("Rank");
         watch.start("Fetch term occurrences");
 
-        Map<String, TermOccurrence> occurrences = new HashMap<>();
+        Map<Integer, TermOccurrence> occurrences = new HashMap<>();
         Set<Integer> allDocIds = new HashSet<>();
 
+        // logger.debug(termCache);
+
         /** Fetch term occurrences */ 
-        Set<String> termsToFetch = new HashSet<>(termCounts.keySet());
+        Set<Integer> termIdsToFetch = new HashSet<>(termVec.keySet());
         // Fetch from cache if present
-        termCounts.keySet().forEach(term -> {
-            if (termCache.containsKey(term)) {
-                TermOccurrence occ = termCache.get(term);
-                occurrences.put(term, occ);
+        termVec.keySet().forEach(termId -> {
+            if (termCache.containsKey(termId)) {
+                TermOccurrence occ = termCache.get(termId);
+                occurrences.put(termId, occ);
                 allDocIds.addAll(occ.getDocIds());
-                termsToFetch.remove(term);
+                termIdsToFetch.remove(termId);
             }
         });
 
-        pstmtOcc.setArray(1, conn.createArrayOf("text", termsToFetch.toArray()));
+        pstmtOcc.setArray(1, conn.createArrayOf("integer", termIdsToFetch.toArray()));
         try (ResultSet rs = pstmtOcc.executeQuery()) {
             while (rs.next()) {
-                String term = rs.getString(1);
+                int termId = rs.getInt(1);
                 int df = rs.getInt(2);
                 List<Integer> docIds = Arrays.asList((Integer[])rs.getArray(3).getArray());
                 List<Integer> tfs = Arrays.asList((Integer[])rs.getArray(4).getArray());
 
                 allDocIds.addAll(docIds);
-                occurrences.put(term, new TermOccurrence(df, docIds, tfs));
+                occurrences.put(termId, new TermOccurrence(df, docIds, tfs));
             }
         }
         logger.debug("Found {} documents", allDocIds.size());
-        termsToFetch.forEach(term -> termCache.put(term, occurrences.get(term))); // update cache
+        if (allDocIds.isEmpty()) {
+            return null;
+        }
+
+        // logger.debug(occurrences.keySet());
+        termIdsToFetch.forEach(termId -> termCache.put(termId, occurrences.get(termId))); // update cache
         watch.stop();
 
         /** Fetch data (pageRank & length) for relevant documents */ 
@@ -295,10 +321,10 @@ public class Retrieval {
         Map<Integer, Double> bm25Vector = new HashMap<>();
         allDocIds.forEach(docId -> bm25Vector.put(docId, 0.0));
         for (var entry : occurrences.entrySet()) {
-            String term = entry.getKey();
+            int termId = entry.getKey();
             TermOccurrence occurrence = entry.getValue();
 
-            int count = termCounts.get(term);
+            int count = termVec.get(termId);
             int df = occurrence.getDf();
             List<Integer> docIds = occurrence.getDocIds();
             List<Integer> tfs = occurrence.getTfs();
@@ -325,12 +351,12 @@ public class Retrieval {
             .collect(Collectors.toMap(
                 Map.Entry::getKey, Map.Entry::getValue, (e1, e2) -> e1, LinkedHashMap::new));        
 
-        watch.stop();
-        logger.debug(watch.prettyPrint());
-
         pstmtOcc.close();
         pstmtDoc.close();
         conn.close();
+
+        watch.stop();
+        logger.debug(watch.prettyPrint());
         return topkScoreVector.isEmpty() ? null : topkScoreVector;
     }
 
@@ -346,20 +372,25 @@ public class Retrieval {
      * @throws SQLException
      */
     public List<RetrievalResult> retrieve(Map<Integer, RankScore> ranks,
-                                          Set<String> terms,
+                                          Map<Integer, Integer> termVec,
                                           int offset,
                                           int limit,
-                                          int excerptSize) throws SQLException {
+                                          int excerptSize) throws SQLException {                
         Connection conn = ds.getConnection();
         PreparedStatement pstmtMeta = conn.prepareStatement(metaSql);
 
+        StopWatch watch = new StopWatch("Retrieve");
+        watch.start("Fetch meta data");
         Map<Integer, RetrievalResult> results = new LinkedHashMap<>();
         ranks.keySet().stream().skip(offset).limit(limit)
             .forEach(docId -> results.put(docId, null));
 
-        pstmtMeta.setArray(1, conn.createArrayOf("text", terms.toArray()));
+        pstmtMeta.setArray(1, conn.createArrayOf("integer", termVec.keySet().toArray()));
         pstmtMeta.setArray(2, conn.createArrayOf("integer", results.keySet().toArray()));
         try (ResultSet rs = pstmtMeta.executeQuery()) {
+            watch.stop();
+
+            watch.start("Collect results");
             while (rs.next()) {
                 int docId = rs.getInt(1);
                 double bm25 = ranks.get(docId).getBm25();
@@ -376,7 +407,7 @@ public class Retrieval {
 
                     Document parsed = Jsoup.parse(content);
                     String title = parsed.title();
-
+                    
                     String excerpt = getExcerpt(parsed.text(), positions, excerptSize);
                     results.put(docId, new RetrievalResult(url.toString(), baseUrl, path, title, excerpt,
                                                            bm25, pageRank, score));
@@ -385,6 +416,9 @@ public class Retrieval {
                 }       
             }
         }
+
+        watch.stop();
+        logger.debug(watch.prettyPrint());
 
         pstmtMeta.close();
         conn.close();
@@ -476,16 +510,15 @@ public class Retrieval {
 
             StopWatch watch = new StopWatch("Total");
             watch.start("Vectorize");
-            Map<String, Integer> termCounts = retrieval.vectorize(query);
+            Map<Integer, Integer> termVec = retrieval.vectorize(query);
             watch.stop();
-            System.out.println("Key words: " + termCounts.keySet());
             
             watch.start("Rank");
-            Map<Integer, RankScore> ranks = retrieval.rank(termCounts, 100);
+            Map<Integer, RankScore> ranks = retrieval.rank(termVec, 100);
             watch.stop();
             if (ranks != null) {
                 watch.start("Retrieve");
-                List<RetrievalResult> data = retrieval.retrieve(ranks, termCounts.keySet(), 0, 10, 50);
+                List<RetrievalResult> data = retrieval.retrieve(ranks, termVec, 0, 10, 50);
                 watch.stop();
 
                 ObjectMapper mapper = new ObjectMapper();

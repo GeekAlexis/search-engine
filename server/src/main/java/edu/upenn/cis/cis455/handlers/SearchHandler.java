@@ -23,9 +23,9 @@ import org.apache.logging.log4j.Logger;
 public class SearchHandler implements Route {
 	private static final Logger logger = LogManager.getLogger(SearchHandler.class);
 
+	private static final int TOPK = 100;
 	private static final int PAGE_SIZE = 10;
 	private static final int EXCERPT_SIZE = 50;
-	private static final int TOPK = 100;
 
 	private Retrieval retrieval;
 	private ObjectMapper mapper = new ObjectMapper();
@@ -37,24 +37,26 @@ public class SearchHandler implements Route {
 	@Override
 	public Object handle(Request req, Response res) throws HaltException {
 		String query = req.queryParams("query");
-		int page = Integer.parseInt(req.queryParams("page"));
+		String page = req.queryParams("page");
+		int pageIdx = (page != null) ? Integer.parseInt(page) - 1 : 0;
 
 		Map<Integer, RankScore> ranks = null;
 		List<RetrievalResult> data = null;
 		try {
-			Map<String, Integer> termCounts = retrieval.vectorize(query);
-			ranks = retrieval.rank(termCounts, TOPK);
+			Map<Integer, Integer> termVec = retrieval.vectorize(query);
 
+			ranks = retrieval.rank(termVec, TOPK);
 			if (ranks == null) {
 				res.status(204);
 				return "Your search - " + query + " - did not match any pages";
 			}
-			int offset = (page - 1) * PAGE_SIZE;
+
+			int offset = pageIdx * PAGE_SIZE;
 			if (offset >= ranks.size()) {
 				res.status(400);
-				return "Page " + page + " is out of bound";
+				return "Requested page out of bound";
 			}
-			data = retrieval.retrieve(ranks, termCounts.keySet(), offset, PAGE_SIZE, EXCERPT_SIZE);
+			data = retrieval.retrieve(ranks, termVec, offset, PAGE_SIZE, EXCERPT_SIZE);
 		} catch (SQLException e) {
 			logger.error("Failed to query database");
 			res.status(500);
@@ -70,7 +72,6 @@ public class SearchHandler implements Route {
 		String json = null;
 		try {
 			json = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(results);
-			logger.debug("Search Results: {}", json);
 			// Format: {match: n, data: [{url, baseUrl, path, title, excerpt, bm25, pageRank, score}, ...]}
 		} catch (JsonProcessingException e) {
 			logger.error("Failed to serialize retrieval results");
