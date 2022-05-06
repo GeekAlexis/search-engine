@@ -1,6 +1,6 @@
 const axios = require('axios');
 
-async function getSearchResults(query) {
+async function getSearchResults(query, page) {
   /*
   const record = {
     bm25: 0.3,
@@ -18,7 +18,7 @@ async function getSearchResults(query) {
   */
 
   try {
-    const res = await axios.get(`/search?query=${query}`);
+    const res = await axios.get(`/search?query=${query}&page=${page}`);
     if (res.status === 200) {
       return res.data;
     }

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Pagination from '@mui/material/Pagination';
 import Record from './Record';
+import LinearProgress from '@mui/material/LinearProgress';
 import PropTypes from 'prop-types';
 import getSearchResults from '../apis/getSearchResults';
 
@@ -19,43 +20,49 @@ const data = Array(100).fill(record);
 
 function Results(props) {
   const { query } = props;
-  const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
 
   const [page, setPage] = useState(1);
   const pageSize = 10;
-  const pageCount = Math.ceil(data.length / pageSize);
-  const [items, setItems] = useState(data.slice(0, pageSize));
+  const [pageCount, setPageCount] = useState(0);
+  const [items, setItems] = useState([]);
 
   useEffect(() => {
     async function fetch() {
       setLoading(true);
-      const data = await getSearchResults(query);
-      setData(data);
+      const data = await getSearchResults(query, page);
+      if (data) {
+        setPageCount(Math.ceil(data.match / pageSize));
+        setItems(data.data);
+      }
       setLoading(false);
-      setItems(data.slice(0, pageSize));
     }
     fetch();
-  }, [query]);
+  }, [query, page]);
 
   function handleChange(e, p) {
     setPage(p);
-    setItems(data.slice((p - 1) * pageSize, p * pageSize));
   }
 
   return (
-    <>
-      {items.map((record, i) => (
-        <Record key={i} data={record} />
-      ))}
+    <React.Fragment>
+      {loading ? (
+        <LinearProgress />
+      ) : (
+        <React.Fragment>
+          {items.map((record, i) => (
+            <Record key={i} data={record} />
+          ))}
 
-      <Pagination
-        className="pagination"
-        count={pageCount}
-        page={page}
-        onChange={handleChange}
-      />
-    </>
+          <Pagination
+            className="pagination"
+            count={pageCount}
+            page={page}
+            onChange={handleChange}
+          />
+        </React.Fragment>
+      )}
+    </React.Fragment>
   );
 }
 
