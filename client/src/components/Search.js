@@ -93,7 +93,7 @@ function Search(props) {
             <InputBase
               ref={params.InputProps.ref}
               inputProps={params.inputProps}
-              sx={{ ml: 1, flex: 1 }}
+              sx={{ ml: 1, flex: 1, width: '100%' }}
               placeholder="Search"
               onChange={handleChange}
               onKeyDown={handleEnter}

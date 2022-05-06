@@ -53,10 +53,10 @@ function Options(props) {
       </Box>
       <TabPanel value={value} index={0}>
         <Grid container spacing={2}>
-          <Grid className="results" item xs={6}>
+          <Grid className="results" item xs={10} sm={8} md={6} lg={6} xl={5}>
             <Results query={q} />
           </Grid>
-          <Grid item xs={6}></Grid>
+          <Grid item xs={2} sm={4} md={6} lg={6} xl={7}></Grid>
         </Grid>
       </TabPanel>
       <TabPanel value={value} index={1}>

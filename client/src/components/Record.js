@@ -50,7 +50,7 @@ function Record(props) {
         >
           {data.title}
         </Link>
-        <Typography className="excerpt" variant="body2">
+        <Typography className="excerpt" variant="body2" sx={{ mb: -1 }}>
           {parse(data.excerpt)}
         </Typography>
       </CardContent>
