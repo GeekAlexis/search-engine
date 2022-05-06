@@ -11,15 +11,15 @@ import static org.apache.logging.log4j.core.config.Configurator.setLevel;
 
 public class Server {
 	public static void main(String[] args) {
-		if (args.length < 2) {
-			System.err.println("Syntax: Server {port} {database url} ");
+		if (args.length < 1) {
+			System.err.println("Syntax: Server {port}");
 			System.exit(1);
 		}
 		setLevel("edu.upenn.cis.cis455", Level.DEBUG);
 
 		port(Integer.parseInt(args[0]));
 
-		get("/search", new SearchHandler(args[1]));
+		get("/search", new SearchHandler());
 		get("/news", new NewsHandler());
 		get("/yelp/:term/:location", new YelpHandler());
 

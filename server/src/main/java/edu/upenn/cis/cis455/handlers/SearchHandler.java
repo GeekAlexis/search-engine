@@ -2,6 +2,8 @@ package edu.upenn.cis.cis455.handlers;
 
 import java.sql.SQLException;
 import java.util.List;
+import java.util.Map;
+import static java.util.Map.entry;
 
 import spark.Request;
 import spark.Route;
@@ -12,6 +14,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import edu.upenn.cis.cis455.search.Retrieval;
+import edu.upenn.cis.cis455.search.RankScore;
 import edu.upenn.cis.cis455.search.RetrievalResult;
 
 import org.apache.logging.log4j.LogManager;
@@ -20,38 +23,56 @@ import org.apache.logging.log4j.Logger;
 public class SearchHandler implements Route {
 	private static final Logger logger = LogManager.getLogger(SearchHandler.class);
 
+	private static final int TOPK = 100;
+	private static final int PAGE_SIZE = 10;
+	private static final int EXCERPT_SIZE = 50;
+
 	private Retrieval retrieval;
 	private ObjectMapper mapper = new ObjectMapper();
 
-	public SearchHandler(String dbUrl) {
-		retrieval = new Retrieval(dbUrl, 1.2, 0.75, 1.0);
+	public SearchHandler() {
+		retrieval = new Retrieval(1.2, 0.75, 1.0);
 	}
 
 	@Override
 	public Object handle(Request req, Response res) throws HaltException {
 		String query = req.queryParams("query");
-		List<String> terms = retrieval.preprocess(query);
+		String page = req.queryParams("page");
+		int pageIdx = (page != null) ? Integer.parseInt(page) - 1 : 0;
 
-		List<RetrievalResult> results = null;
+		Map<Integer, RankScore> ranks = null;
+		List<RetrievalResult> data = null;
 		try {
-			results = retrieval.retrieve(terms, 100, 50);
+			Map<Integer, Integer> termVec = retrieval.vectorize(query);
+
+			ranks = retrieval.rank(termVec, TOPK);
+			if (ranks == null) {
+				res.status(204);
+				return "Your search - " + query + " - did not match any pages";
+			}
+
+			int offset = pageIdx * PAGE_SIZE;
+			if (offset >= ranks.size()) {
+				res.status(400);
+				return "Requested page out of bound";
+			}
+			data = retrieval.retrieve(ranks, termVec, offset, PAGE_SIZE, EXCERPT_SIZE);
 		} catch (SQLException e) {
 			logger.error("Failed to query database");
 			res.status(500);
 			return e.getMessage();
 		}
 
-		if (results == null) {
-			res.status(204);
-			return "Your search - " + query + " - did not match any pages";
-		}
-
 		res.type("application/json");
+		Map<String, Object> results = Map.ofEntries(
+			entry("match", ranks.size()),
+			entry("data", data)
+		);
+
 		String json = null;
 		try {
 			json = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(results);
-			logger.debug("Search Results: {}", json);
-			// Format: {[ {url, base url, path, title, excerpt, bm25, page rank, overall score}, ...]}
+			// Format: {match: n, data: [{url, baseUrl, path, title, excerpt, bm25, pageRank, score}, ...]}
 		} catch (JsonProcessingException e) {
 			logger.error("Failed to serialize retrieval results");
 			res.status(500);

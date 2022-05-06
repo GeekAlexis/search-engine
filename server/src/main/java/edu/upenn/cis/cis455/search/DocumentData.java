@@ -1,22 +1,12 @@
 package edu.upenn.cis.cis455.search;
 
-public class DocOccurrence {
-    private int docId;
+public class DocumentData {
     private int dl;
     private double pageRank;
 
-    public DocOccurrence(int docId, int dl, double pageRank) {
-        this.docId = docId;
+    public DocumentData(int dl, double pageRank) {
         this.dl = dl;
         this.pageRank = pageRank;
-    }
-
-    public int getDocId() {
-        return docId;
-    }
-
-    public void setDocId(int docId) {
-        this.docId = docId;
     }
 
     public int getDl() {
@@ -37,9 +27,7 @@ public class DocOccurrence {
 
     @Override
     public String toString() {
-        return "DocOccurrence [docId=" + docId + ", dl=" + dl + ", pageRank=" + pageRank + "]";
+        return "DocumentData [dl=" + dl + ", pageRank=" + pageRank + "]";
     }
-
-    
     
 }

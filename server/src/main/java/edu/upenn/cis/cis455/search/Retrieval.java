@@ -6,23 +6,30 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.Properties;
 import java.util.stream.Collectors;
-import java.net.MalformedURLException;
 import java.net.URL;
+import java.net.MalformedURLException;
+import java.text.Normalizer;
+
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.PreparedStatement;
+import com.zaxxer.hikari.HikariConfig;
+import com.zaxxer.hikari.HikariDataSource;
 
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
+import org.springframework.util.StopWatch;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import opennlp.tools.util.normalizer.*;
@@ -38,41 +45,52 @@ import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.Level;
 import static org.apache.logging.log4j.core.config.Configurator.setLevel;
 
-import edu.upenn.cis.cis455.Config;
-
 
 public class Retrieval {
     private static final Logger logger = LogManager.getLogger(Retrieval.class);
 
-    private Connection conn;
-    private TokenizerME tokenizer;
+    private static final int TERM_CACHE_SIZE = 1000;
+    private static final int DOC_CACHE_SIZE = 100000;
+
+    private HikariDataSource ds;
+
+    private static ThreadLocal<TokenizerME> threadLocalTokenizer;
     private Detokenizer detokenizer;
     private SnowballStemmer stemmer;
     private AggregateCharSequenceNormalizer normalizer;
 
-    private PreparedStatement pstmtOcc;
-    private PreparedStatement pstmtBm25;
-    private PreparedStatement pstmtMeta;
+    private Map<Integer, TermOccurrence> termCache;
+    private Map<Integer, DocumentData> docCache;
+
+    private String vecSql;
+    private String docSql;
+    private String occSql;
+    private String metaSql;
 
     private double bm25K;
     private double bm25B;
     private double pageRankFactor;
-
     private int n;
     private double avgDl;
 
-    public Retrieval(String dbUrl, double bm25K, double bm25B, double pageRankFactor) {
+    public Retrieval(double bm25K, double bm25B, double pageRankFactor) {
         this.bm25K = bm25K;
         this.bm25B = bm25B;
         this.pageRankFactor = pageRankFactor;
 
-        logger.info("Loading NLP models");
+        termCache = Collections.synchronizedMap(new Cache<>(TERM_CACHE_SIZE));
+        docCache = Collections.synchronizedMap(new Cache<>(DOC_CACHE_SIZE));
+
+        logger.info("Initializing retrieval...");
+
+        /** Load NLP models */
         try (InputStream modelIn = new URL(TokenizerConfig.TOKENIZER_URL).openStream()) {
-            tokenizer = new TokenizerME(new TokenizerModel(modelIn));
+            TokenizerModel tokenizerModel = new TokenizerModel(modelIn);
+            threadLocalTokenizer = ThreadLocal.withInitial(() -> new TokenizerME(tokenizerModel));
         } catch (IOException e) {
             throw new RuntimeException("Failed to load tokenizer");
         }
-
+        
         detokenizer = new DictionaryDetokenizer(new DetokenizationDictionary(
             TokenizerConfig.SPECIAL_TOKENS, TokenizerConfig.DETOKENIZE_RULES
         ));
@@ -85,296 +103,331 @@ public class Retrieval {
         );
         stemmer = new SnowballStemmer(SnowballStemmer.ALGORITHM.ENGLISH);
 
-        try {
-            Class.forName("org.postgresql.Driver");
-            conn = DriverManager.getConnection(dbUrl, Config.DB_USER, Config.DB_PASS);
-        } catch (Exception e) {
-            logger.error("An error occurred:", e);
-            throw new RuntimeException("Failed to open database");
+        /** Load config properties file */
+        String dbUrl = null;
+        String dbUser = null;
+        String dbPass = null;
+        try (InputStream in = Retrieval.class.getClassLoader().getResourceAsStream("config.properties")) {
+            Properties prop = new Properties();
+            prop.load(in);
+            dbUrl = prop.getProperty("db.url");
+            dbUser = prop.getProperty("db.user");
+            dbPass = prop.getProperty("db.pass");
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to load config");
         }
-        logger.debug("Opened database successfully");
 
-        // Precompute corpus size from forward index
-        String sql = "SELECT COUNT(*) AS n FROM \"ForwardIndex\"";
-        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            ResultSet rs = pstmt.executeQuery();
-            rs.next();
-            n = rs.getInt("n");
-        } catch (SQLException e) {
-            logger.error("An error occurred:", e);
-            throw new RuntimeException("Failed to fetch corpus size");
+        /** Setup database connection pooling */
+        HikariConfig config = new HikariConfig();
+        config.setJdbcUrl(dbUrl);
+        config.setUsername(dbUser);
+        config.setPassword(dbPass);
+        // Use server-side plan for repeated queries
+        config.addDataSourceProperty("prepareThreshold", "1");
+        ds = new HikariDataSource(config);
+
+        try (Connection conn = ds.getConnection()) {
+            // Precompute corpus size from forward index
+            String sql = "SELECT COUNT(*) AS n FROM \"ForwardIndex\"";
+            try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                ResultSet rs = pstmt.executeQuery();
+                rs.next();
+                n = rs.getInt("n");
+            }
+            logger.debug("Precomputed corpus size: {}", n);
+
+            // Precompute average document length from forward index
+            sql = "SELECT AVG(length) AS avg_dl FROM \"ForwardIndex\"";
+            try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                ResultSet rs = pstmt.executeQuery();
+                rs.next();
+                avgDl = rs.getDouble("avg_dl");
+            }
+            logger.debug("Precomputed average document length: {}", avgDl);
+
+            vecSql = "SELECT term, id " +
+                     "FROM \"Lexicon\" " +
+                     "WHERE term = ANY (?)";
+
+            docSql = "SELECT f.doc_id, f.length, r.rank " +
+                     "FROM \"ForwardIndex\" f " +
+                     "LEFT JOIN \"PageRankTest\" r on r.doc_id = f.doc_id " +
+                     "WHERE f.doc_id = ANY (?)";
+
+            occSql = "SELECT l.id, l.df, array_agg(p.doc_id), array_agg(p.tf)" +
+                     "FROM \"Lexicon\" l " +
+                     "JOIN \"Posting\" p ON p.id >= l.posting_id_offset AND p.id < l.posting_id_offset + l.df " +
+                     "WHERE l.id = ANY (?) " +
+                     "GROUP BY l.id, l.df";
+
+            // metaSql = "SELECT d.id, d.url, d.content, array_agg(h.position order by h.position) " +
+            //           "FROM \"Lexicon\" l " +
+            //           "JOIN \"Posting\" p ON p.id >= l.posting_id_offset AND p.id < l.posting_id_offset + l.df " +
+            //           "JOIN \"Document\" d ON d.id = p.doc_id " +
+            //           "JOIN \"Hit\" h on h.id = p.hit_id_offset " +
+            //           "WHERE l.id = ANY (?) AND d.id = ANY (?) " +
+            //           "GROUP BY d.id, d.url, d.content";
+
+            metaSql = "SELECT d.id, d.url, d.content, array_agg(h.position order by h.position) " +
+                      "FROM \"Lexicon\" l " +
+                      "JOIN \"Posting\" p ON p.id >= l.posting_id_offset AND p.id < l.posting_id_offset + l.df " +
+                      "JOIN \"Hit\" h on h.id >= p.hit_id_offset AND h.id < p.hit_id_offset + p.tf " +
+                      "JOIN \"Document\" d ON d.id = p.doc_id " +
+                      "WHERE l.id = ANY (?) AND d.id = ANY (?) " +
+                      "GROUP BY d.id, d.url, d.content";
         }
-        logger.debug("Precomputed corpus size: {}", n);
-
-        // Precompute average document length from forward index
-        sql = "SELECT AVG(length) AS avg_dl FROM \"ForwardIndex\"";
-        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            ResultSet rs = pstmt.executeQuery();
-            rs.next();
-            avgDl = rs.getDouble("avg_dl");
-        } catch (SQLException e) {
+        catch (SQLException e) {
             logger.error("An error occurred:", e);
-            throw new RuntimeException("Failed to fetch average document length");
-        }
-        logger.debug("Precomputed average document length: {}", avgDl);
-
-        // Precompile queries
-        try {
-            //  sql = "SELECT DISTINCT ON (p.doc_id) p.doc_id, f.length, r.rank " +
-            //        "FROM \"Lexicon\" l " +
-            //        "JOIN \"Posting\" p ON p.id >= l.posting_id_offset AND p.id < l.posting_id_offset + l.df " +
-            //        "JOIN \"ForwardIndex\" f on p.doc_id = f.doc_id " +
-            //        "JOIN \"PageRank\" r on p.doc_id = r.doc_id " +
-            //        "WHERE l.term = ANY (?)";
-
-            sql = "SELECT DISTINCT ON (p.doc_id) p.doc_id, f.length " +
-                  "FROM \"Lexicon\" l " +
-                  "JOIN \"Posting\" p ON p.id >= l.posting_id_offset AND p.id < l.posting_id_offset + l.df " +
-                  "JOIN \"ForwardIndex\" f on p.doc_id = f.doc_id " +
-                  "WHERE l.term = ANY (?)";
-            pstmtOcc = conn.prepareStatement(sql);
-
-            // sql = "SELECT p.doc_id, p.tf, l.df " +
-            //       "FROM \"Lexicon\" l " +
-            //       "JOIN \"Posting\" p ON p.id >= l.posting_id_offset AND p.id < l.posting_id_offset + l.df " +
-            //       "WHERE l.term = ?";
-
-            sql = "SELECT l.term, l.df, array_agg(p.doc_id), array_agg(p.tf)" +
-                  "FROM \"Lexicon\" l " +
-                  "JOIN \"Posting\" p ON p.id >= l.posting_id_offset AND p.id < l.posting_id_offset + l.df " +
-                  "WHERE l.term = ANY (?) " +
-                  "GROUP BY l.term";
-            pstmtBm25 = conn.prepareStatement(sql);
-
-            // sql = "SELECT url, content " +
-            //       "FROM \"Document\" " +
-            //       "WHERE id = ANY (?)";
-            // pstmtMeta = conn.prepareStatement(sql);
-
-            sql = "SELECT d.id, d.url, d.content, array_agg(h.position order by h.position) " +
-                  "FROM \"Lexicon\" l " +
-                  "JOIN \"Posting\" p ON p.id >= l.posting_id_offset AND p.id < l.posting_id_offset + l.df " +
-                  "JOIN \"Document\" d ON d.id = p.doc_id " +
-                  "JOIN \"Hit\" h on h.id = p.hit_id_offset " +
-                  "WHERE l.term = ANY (?) AND d.id = ANY (?) " +
-                  "GROUP BY d.id";
-            pstmtMeta = conn.prepareStatement(sql);
-
-        } catch (SQLException e) {
-            logger.error("An error occurred:", e);
-            throw new RuntimeException("Failed to precompile queries");
+            throw new RuntimeException("Failed to initialize retrieval");
         }
     }
 
-    /**
-     * It takes a query, tokenizes it, normalizes it, removes words that contain whitespace or all
-     * punctuations, converts to lowercase and stems it
-     *
-     * @param query The query string to be preprocessed.
-     * @return A list of terms
-     */
-    public List<String> preprocess(String query) {
-        String[] tokens = tokenizer.tokenize(query);
-        List<String> terms = new ArrayList<>();
+   /**
+    * The function takes a query string, preprocesses the token then vectorize it by counting
+    * the unique terms.
+    * 
+    * @param query The query string to be vectorized.
+    * @return A map of the term ID and their counts.
+    */
+    public Map<Integer, Integer> vectorize(String query) throws SQLException {
+        String[] tokens = threadLocalTokenizer.get().tokenize(query);
+        Map<String, Integer> termCounts = new HashMap<>();
 
         for (String token : tokens) {
             // Normalize
             token = normalizer.normalize(token).toString();
+            token = Normalizer.normalize(token, Normalizer.Form.NFKD)
+                .replaceAll("[\\p{InCombiningDiacriticalMarks}\\p{Cntrl}]", ""); /* diatrics */
+            token = token.replaceAll("[\u00B4\u02B9\u02BC\u02C8\u0301\u2018\u2019\u201B\u2032\u2034\u2037]", "\'"); /* apostrophe */
+            token = token.replaceAll("[\u00AB\u00BB\u02BA\u030B\u030E\u201C\u201D\u201E\u201F\u2033\u2036\u3003\u301D\u301E]", "\""); /* quotation mark */
+            token = token.replaceAll("[\u00AD\u2010\u2011\u2012\u2013\u2014\u2212\u2015]", "-"); /* hyphen */
+            token = token.trim().toLowerCase();
 
             // Convert to lowercase and stem
-            token = stemmer.stem(token.toLowerCase()).toString();
+            token = stemmer.stem(token).toString();
 
             // Remove words that contain whitespace or all punctuations
             if (token.isBlank() || token.matches(".*\\s.*") || token.matches("\\p{Punct}+")) {
                 continue;
             }
-            terms.add(token);
-        }
-        return terms;
-    }
 
-    /**
-     * It takes a set of terms and returns a map of document IDs to document occurrences
-     *
-     * @param terms a set of terms to search for
-     * @return A map of docIds to DocOccurrences.
-     */
-    public Map<Integer, DocOccurrence> findDocOccurrences(Set<String> terms) throws SQLException {
-        Map<Integer, DocOccurrence> occurrences = new HashMap<>();
-
-        pstmtOcc.setArray(1, conn.createArrayOf("text", terms.toArray()));
-        try (ResultSet rs = pstmtOcc.executeQuery()) {
-            while (rs.next()) {
-                int docId = rs.getInt(1);
-                int docLen = rs.getInt(2);
-                // double pageRank = rs.getDouble(3);
-                // occurrences.put(docId, new DocOccurrence(docId, docLen, pageRank));
-
-                occurrences.put(docId, new DocOccurrence(docId, docLen, 0));
-            }
-        }
-        return occurrences;
-    }
-
-    /**
-     * It retrieves the top-k documents that are most relevant to the given query terms
-     *
-     * @param terms a list of query terms
-     * @param topk the number of documents to return
-     * @param excerptSize the number of tokens to be included in the excerpt
-     * @return A list of RetrievalResult objects or null when there is no match
-     */
-    public List<RetrievalResult> retrieve(List<String> terms, int topk, int excerptSize) throws SQLException {
-        if (terms.isEmpty()) {
-            return null;
-        }
-
-        // Count unique terms
-        Map<String, Integer> termCounts = new HashMap<>();
-        for (String term : terms) {
-            Integer count = termCounts.get(term);
+            // Count unique terms
+            Integer count = termCounts.get(token);
             if (count == null) {
                 count = 0;
             }
-            termCounts.put(term, count + 1);
+            termCounts.put(token, count + 1);
         }
+        logger.debug("Key words: {}", termCounts.keySet());
 
-        Map<Integer, DocOccurrence> occurrences = findDocOccurrences(termCounts.keySet());
-        logger.debug("Fetched {} doc occurrences: {}", occurrences.size(), occurrences);
-
-        // Compute BM25 for each term
-        // Map<Integer, Double> bm25Vector = new HashMap<>();
-        // occurrences.keySet().forEach(docId -> bm25Vector.put(docId, 0.0));
-        // for (Map.Entry<String, Integer> entry : termCounts.entrySet()) {
-        //     String term = entry.getKey();
-        //     int count = entry.getValue();
-
-        //     pstmtBm25.setString(1, term);
-        //     try (ResultSet rs = pstmtBm25.executeQuery()) {
-        //         while (rs.next()) {
-        //             int docId = rs.getInt(1);
-        //             int tf = rs.getInt(2);
-        //             int df = rs.getInt(3);
-        //             double bm25 = computeBM25(tf, df, occurrences.get(docId).getDl());
-        //             bm25Vector.put(docId, bm25Vector.get(docId) + bm25 * count);
-        //         }
-        //     }
-        // }
-
-        Map<Integer, Double> bm25Vector = new HashMap<>();
-        occurrences.keySet().forEach(docId -> bm25Vector.put(docId, 0.0));
-
-        pstmtBm25.setArray(1, conn.createArrayOf("text", termCounts.keySet().toArray()));
-        ResultSet rs = pstmtBm25.executeQuery();
-
-        while (rs.next()) {
-            String term = rs.getString(1);
-            int df = rs.getInt(2);
-            Integer[] docIds = (Integer[])rs.getArray(3).getArray();
-            Integer[] tfs = (Integer[])rs.getArray(4).getArray();
-
-            int count = termCounts.get(term);
-            for (int i = 0; i < docIds.length; i++) {
-                double bm25 = computeBM25(tfs[i], df, occurrences.get(docIds[i]).getDl());
-                bm25Vector.put(docIds[i], bm25Vector.get(docIds[i]) + bm25 * count);
-            }
+        Map<Integer, Integer> termVec = new HashMap<>();
+        try (Connection conn = ds.getConnection()) {
+            try (PreparedStatement pstmtVec = conn.prepareStatement(vecSql)) {
+                pstmtVec.setArray(1, conn.createArrayOf("text", termCounts.keySet().toArray()));
+                ResultSet rs = pstmtVec.executeQuery();
+                while (rs.next()) {
+                    String term = rs.getString(1);
+                    int termId = rs.getInt(2);
+                    termVec.put(termId, termCounts.get(term));
+                }
+            }   
         }
-        rs.close();
+        return termVec;
+    }
 
-        // Weight bm25 and PageRank in overall score
-        Map<Integer, Double> scoreVector = new HashMap<>();
-        occurrences.forEach((docId, occurrence) -> {
-            scoreVector.put(docId, rankingScore(bm25Vector.get(docId), occurrence.getPageRank()));
-        });
-
-        // Sort and retrieve top K
-        Map<Integer, Double> topkScoreVector = scoreVector.entrySet().stream()
-            .sorted(Map.Entry.comparingByValue(Comparator.reverseOrder()))
-            .limit(topk)
-            .collect(Collectors.toMap(
-                Map.Entry::getKey, Map.Entry::getValue, (e1, e2) -> e1, LinkedHashMap::new));
-
-        if (topkScoreVector.isEmpty()) {
+    /**
+     * Rank the documents according to query terms and return the topK results.
+     * 
+     * @param termVec a map of term IDs and their counts in the query
+     * @param topk the number of documents to return
+     * @return A ordered map of RankScore objects.
+     */
+    public Map<Integer, RankScore> rank(Map<Integer, Integer> termVec, int topk) throws SQLException {
+        if (termVec.isEmpty()) {
             return null;
         }
 
-        Map<Integer, RetrievalResult> results = new LinkedHashMap<>();
-        topkScoreVector.keySet().forEach(docId -> results.put(docId, null));
+        Connection conn = ds.getConnection();
+        PreparedStatement pstmtOcc = conn.prepareStatement(occSql);
+        PreparedStatement pstmtDoc = conn.prepareStatement(docSql);
 
-        // Collect document urls and metadata
-        pstmtMeta.setArray(1, conn.createArrayOf("string", termCounts.keySet().toArray()));
-        pstmtMeta.setArray(2, conn.createArrayOf("integer", results.keySet().toArray()));
-        rs = pstmtMeta.executeQuery();
+        StopWatch watch = new StopWatch("Rank");
+        watch.start("Fetch term occurrences");
 
-        while (rs.next()) {
-            try {
-                int docId = rs.getInt(1);
-                double bm25 = bm25Vector.get(docId);
-                double pageRank = occurrences.get(docId).getPageRank();
-                double score = topkScoreVector.get(docId);
+        Map<Integer, TermOccurrence> occurrences = new HashMap<>();
+        Set<Integer> allDocIds = new HashSet<>();
 
-                URL url = new URL(rs.getString(2));
-                String baseUrl = url.getHost();
-                String path = String.join(" › ", url.getPath().split("/")).strip();
+        // logger.debug(termCache);
 
-                String content = new String(rs.getBytes(3));
-                Integer[] positions = (Integer[])rs.getArray(4).getArray();
+        /** Fetch term occurrences */ 
+        Set<Integer> termIdsToFetch = new HashSet<>(termVec.keySet());
+        // Fetch from cache if present
+        termVec.keySet().forEach(termId -> {
+            if (termCache.containsKey(termId)) {
+                TermOccurrence occ = termCache.get(termId);
+                occurrences.put(termId, occ);
+                allDocIds.addAll(occ.getDocIds());
+                termIdsToFetch.remove(termId);
+            }
+        });
 
-                Document parsed = Jsoup.parse(content);
-                String title = parsed.title();
-                String excerpt = getExcerpt(parsed.text(), positions, excerptSize);
+        pstmtOcc.setArray(1, conn.createArrayOf("integer", termIdsToFetch.toArray()));
+        try (ResultSet rs = pstmtOcc.executeQuery()) {
+            while (rs.next()) {
+                int termId = rs.getInt(1);
+                int df = rs.getInt(2);
+                List<Integer> docIds = Arrays.asList((Integer[])rs.getArray(3).getArray());
+                List<Integer> tfs = Arrays.asList((Integer[])rs.getArray(4).getArray());
 
-                results.put(docId, new RetrievalResult(url.toString(), baseUrl, path, title, excerpt, bm25, pageRank, score));
-            } catch (MalformedURLException e) {
-                logger.error("Retrieved URL is invalid");
+                allDocIds.addAll(docIds);
+                occurrences.put(termId, new TermOccurrence(df, docIds, tfs));
             }
         }
-        rs.close();
+        logger.debug("Found {} documents", allDocIds.size());
+        if (allDocIds.isEmpty()) {
+            return null;
+        }
 
-        // List<RetrievalResult> results = new ArrayList<>();
-        // for (Map.Entry<Integer, Double> entry : topkScoreVector.entrySet()) {
-        //     int docId = entry.getKey();
-        //     double score = entry.getValue();
-        //     double bm25 = bm25Vector.get(docId);
-        //     double pageRank = occurrences.get(docId).getPageRank();
+        // logger.debug(occurrences.keySet());
+        termIdsToFetch.forEach(termId -> termCache.put(termId, occurrences.get(termId))); // update cache
+        watch.stop();
 
-        //     if (!rs.next()) {
-        //         throw new SQLException("Retrieved document ID not found");
-        //     }
+        /** Fetch data (pageRank & length) for relevant documents */ 
+        watch.start("Fetch document data");
+        Map<Integer, DocumentData> docData = new HashMap<>();
+        Set<Integer> docIdsToFetch = new HashSet<>(allDocIds);
+        // Fetch from cache if present
+        allDocIds.forEach(docId -> {
+            if (docCache.containsKey(docId)) {
+                docData.put(docId, docCache.get(docId));
+                docIdsToFetch.remove(docId);
+            }
+        });
 
-        //     try {
-        //         URL url = new URL(rs.getString("url"));
-        //         String baseUrl = url.getHost();
-        //         String path = String.join(" › ", url.getPath().split("/")).strip();
-        //         String content = new String(rs.getBytes("content"));
+        pstmtDoc.setArray(1, conn.createArrayOf("integer", docIdsToFetch.toArray()));
+        try (ResultSet rs = pstmtDoc.executeQuery()) {
+            while (rs.next()) {
+                int docId = rs.getInt(1);
+                int dl = rs.getInt(2);
+                double pageRank = Math.max(rs.getDouble(3), 0.15);
+                docData.put(docId, new DocumentData(dl, pageRank));
+            }
+        }
+        docIdsToFetch.forEach(docId -> docCache.put(docId, docData.get(docId))); // update cache
+        watch.stop();
 
-        //         Document parsed = Jsoup.parse(content);
-        //         String title = parsed.title();
+        watch.start("BM25 & sort topK");
+        /** Compute BM25 for each term */    
+        Map<Integer, Double> bm25Vector = new HashMap<>();
+        allDocIds.forEach(docId -> bm25Vector.put(docId, 0.0));
+        for (var entry : occurrences.entrySet()) {
+            int termId = entry.getKey();
+            TermOccurrence occurrence = entry.getValue();
 
-        //         String[] tokens = tokenizer.tokenize(parsed.text());
-        //         String[] excerptTokens = Arrays.copyOfRange(tokens, 0, excerptSize);
-        //         String excerpt = detokenizer.detokenize(excerptTokens, null) + " ...";
+            int count = termVec.get(termId);
+            int df = occurrence.getDf();
+            List<Integer> docIds = occurrence.getDocIds();
+            List<Integer> tfs = occurrence.getTfs();
 
-        //         results.add(new RetrievalResult(url.toString(), baseUrl, path, title, excerpt, bm25, pageRank, score));
-        //     } catch (MalformedURLException e) {
-        //         logger.error("Retrieved URL is invalid");
-        //     }
-        // }
-        // rs.close();
+            for (int i = 0; i < docIds.size(); i++) {
+                int docId = docIds.get(i);
+                double bm25 = computeBM25(tfs.get(i), df, docData.get(docId).getDl());
+                bm25Vector.put(docId, bm25Vector.get(docId) + bm25 * count);
+            }
+        }
+        
+        /** Weight bm25 and PageRank in overall score */
+        Map<Integer, RankScore> scoreVector = new HashMap<>();
+        bm25Vector.forEach((docId, bm25) -> {
+            double pageRank = docData.get(docId).getPageRank();
+            double weighted = weightScore(bm25, pageRank);
+            scoreVector.put(docId, new RankScore(bm25, pageRank, weighted));
+        });
 
+        /** Sort and retrieve top K */
+        Map<Integer, RankScore> topkScoreVector = scoreVector.entrySet().parallelStream()
+            .sorted(Map.Entry.comparingByValue(Comparator.reverseOrder()))
+            .limit(topk)
+            .collect(Collectors.toMap(
+                Map.Entry::getKey, Map.Entry::getValue, (e1, e2) -> e1, LinkedHashMap::new));        
+
+        pstmtOcc.close();
+        pstmtDoc.close();
+        conn.close();
+
+        watch.stop();
+        logger.debug(watch.prettyPrint());
+        return topkScoreVector.isEmpty() ? null : topkScoreVector;
+    }
+
+    /**
+     * Retrieve a subset of document urls and metadata given the ranks
+     * 
+     * @param ranks
+     * @param terms
+     * @param offset
+     * @param limit
+     * @param excerptSize
+     * @return
+     * @throws SQLException
+     */
+    public List<RetrievalResult> retrieve(Map<Integer, RankScore> ranks,
+                                          Map<Integer, Integer> termVec,
+                                          int offset,
+                                          int limit,
+                                          int excerptSize) throws SQLException {                
+        Connection conn = ds.getConnection();
+        PreparedStatement pstmtMeta = conn.prepareStatement(metaSql);
+
+        StopWatch watch = new StopWatch("Retrieve");
+        watch.start("Fetch meta data");
+        Map<Integer, RetrievalResult> results = new LinkedHashMap<>();
+        ranks.keySet().stream().skip(offset).limit(limit)
+            .forEach(docId -> results.put(docId, null));
+
+        pstmtMeta.setArray(1, conn.createArrayOf("integer", termVec.keySet().toArray()));
+        pstmtMeta.setArray(2, conn.createArrayOf("integer", results.keySet().toArray()));
+        try (ResultSet rs = pstmtMeta.executeQuery()) {
+            watch.stop();
+
+            watch.start("Collect results");
+            while (rs.next()) {
+                int docId = rs.getInt(1);
+                double bm25 = ranks.get(docId).getBm25();
+                double pageRank = ranks.get(docId).getPageRank();
+                double score = ranks.get(docId).getScore();
+
+                try {
+                    URL url = new URL(rs.getString(2));
+                    String baseUrl = url.getHost();
+                    String path = String.join(" › ", url.getPath().split("/")).strip();
+
+                    String content = new String(rs.getBytes(3));
+                    Integer[] positions = (Integer[])rs.getArray(4).getArray();
+
+                    Document parsed = Jsoup.parse(content);
+                    String title = parsed.title();
+                    
+                    String excerpt = getExcerpt(parsed.text(), positions, excerptSize);
+                    results.put(docId, new RetrievalResult(url.toString(), baseUrl, path, title, excerpt,
+                                                           bm25, pageRank, score));
+                } catch (MalformedURLException e) {
+                    logger.error("Retrieved URL is invalid");
+                }       
+            }
+        }
+
+        watch.stop();
+        logger.debug(watch.prettyPrint());
+
+        pstmtMeta.close();
+        conn.close();
         return new ArrayList<>(results.values());
     }
 
     public void close() {
-        if (conn != null) {
-            try {
-                pstmtOcc.close();
-                pstmtBm25.close();
-                pstmtMeta.close();
-                conn.close();
-            } catch (SQLException e) {
-                logger.error("Failed to close database:", e);
-            }
+        if (ds != null) {
+            ds.close();
         }
     }
 
@@ -400,14 +453,14 @@ public class Retrieval {
     }
 
     /**
-     * The ranking score is the sum of the BM25 score and the log of the PageRank score
+     * The weighted score is the sum of the BM25 score and the log of the PageRank score
      *
      * @param bm25 the BM25 score of the document
      * @param pageRank the page rank of the document
      * @return The ranking score.
      */
-    private double rankingScore(double bm25, double pageRank) {
-        return bm25 + pageRankFactor * Math.log(pageRank + 1e-5);
+    private double weightScore(double bm25, double pageRank) {
+        return bm25 + pageRankFactor * Math.log(pageRank);
     }
 
     /**
@@ -420,10 +473,10 @@ public class Retrieval {
      * @return A string of the excerpt with the highlighted words.
      */
     private String getExcerpt(String text, Integer[] positions, int maxTokens) {
-        String[] tokens = tokenizer.tokenize(text);
+        String[] tokens = threadLocalTokenizer.get().tokenize(text);
 
-        int start_pos = positions[0];
-        int end_pos = Math.min(tokens.length, start_pos + maxTokens);
+        int start_pos = Math.max(positions[0] - 10, 0);
+        int end_pos = Math.min(start_pos + maxTokens, tokens.length);
 
         for (int pos : positions) {
             tokens[pos] = "<span>" + tokens[pos] + "</span>";
@@ -433,7 +486,10 @@ public class Retrieval {
         }
 
         String[] excerptTokens = Arrays.copyOfRange(tokens, start_pos, end_pos);
-        String excerpt = detokenizer.detokenize(excerptTokens, null) + " ...";
+        String excerpt = detokenizer.detokenize(excerptTokens, null);
+        if (end_pos < tokens.length) {
+            excerpt += " ...";
+        }
         return excerpt;
     }
 
@@ -444,7 +500,7 @@ public class Retrieval {
         }
         setLevel("edu.upenn.cis.cis455", Level.DEBUG);
 
-        Retrieval retrieval = new Retrieval(args[0], 1.2, 0.75, 0);
+        Retrieval retrieval = new Retrieval(1.2, 0.75, 1.0);
         BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
 
         String query = "";
@@ -452,16 +508,24 @@ public class Retrieval {
             System.out.print("Enter query: ");
             query = reader.readLine();
 
-            List<String> terms = retrieval.preprocess(query);
-            // List<String> terms = Arrays.asList(query.split("\\s"));
-            // List<String> terms = Arrays.asList(query);
-            System.out.println("Key words: " + terms);
-            List<RetrievalResult> results = retrieval.retrieve(terms, 100, 50);
+            StopWatch watch = new StopWatch("Total");
+            watch.start("Vectorize");
+            Map<Integer, Integer> termVec = retrieval.vectorize(query);
+            watch.stop();
+            
+            watch.start("Rank");
+            Map<Integer, RankScore> ranks = retrieval.rank(termVec, 100);
+            watch.stop();
+            if (ranks != null) {
+                watch.start("Retrieve");
+                List<RetrievalResult> data = retrieval.retrieve(ranks, termVec, 0, 10, 50);
+                watch.stop();
 
-            ObjectMapper mapper = new ObjectMapper();
-            String json = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(results);
-
-            System.out.println("Results: " + json);
+                ObjectMapper mapper = new ObjectMapper();
+                String json = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(data);
+                System.out.println("Results: " + json);
+                System.out.println(watch.prettyPrint());
+            }
         }
 
         reader.close();

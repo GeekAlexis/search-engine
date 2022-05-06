@@ -15,7 +15,11 @@ public class TokenizerConfig {
         "\"",
         "'",
         "(",
-        ")"
+        ")",
+        "[",
+        "]",
+        "{",
+        "}"
     };
 
     static Operation[] DETOKENIZE_RULES = {
@@ -27,6 +31,10 @@ public class TokenizerConfig {
         Operation.MOVE_LEFT,
         Operation.RIGHT_LEFT_MATCHING,
         Operation.RIGHT_LEFT_MATCHING,
+        Operation.MOVE_RIGHT,
+        Operation.MOVE_LEFT,
+        Operation.MOVE_RIGHT,
+        Operation.MOVE_LEFT,
         Operation.MOVE_RIGHT,
         Operation.MOVE_LEFT
     };

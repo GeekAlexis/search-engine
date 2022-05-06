@@ -13,6 +13,8 @@ public class HitList {
     @PrimaryKey
     private int docId;
 
+    private int termFreq = 0;
+
     private List<Integer> hits = new ArrayList<>();
 
     public HitList(int docId) {
@@ -27,6 +29,14 @@ public class HitList {
 
     public void setDocId(int docId) {
         this.docId = docId;
+    }
+
+    public int getTermFreq() {
+        return termFreq;
+    }
+
+    public void incTermFreq() {
+        this.termFreq++;
     }
 
     public List<Integer> getHits() {

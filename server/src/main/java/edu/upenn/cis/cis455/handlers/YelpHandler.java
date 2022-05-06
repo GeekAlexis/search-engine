@@ -6,17 +6,26 @@ import spark.Response;
 
 import java.net.HttpURLConnection;
 import java.net.URL;
-
+import java.util.Properties;
 import java.io.BufferedReader;
-import java.io.InputStreamReader;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 
 import spark.HaltException;
-import spark.Session;
-
-import edu.upenn.cis.cis455.Config;
 
 public class YelpHandler implements Route {
+    private String apiKey;
+
+    public YelpHandler() {
+        try (InputStream in = YelpHandler.class.getClassLoader().getResourceAsStream("config.properties")) {
+            Properties prop = new Properties();
+            prop.load(in);
+            apiKey = prop.getProperty("yelp.apiKey");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
 
     @Override
     public Object handle(Request req, Response res) throws HaltException {
@@ -33,7 +42,7 @@ public class YelpHandler implements Route {
             conn = (HttpURLConnection) url.openConnection();
             conn.setRequestMethod("GET");
             conn.setRequestProperty("Accept", "application/json");
-            conn.setRequestProperty("Authorization", "Bearer " + Config.YELP_API_KEY);
+            conn.setRequestProperty("Authorization", "Bearer " + apiKey);
 
             if (conn.getResponseCode() != 200) {
                 throw new RuntimeException("GET request to Yelp API failed: "
