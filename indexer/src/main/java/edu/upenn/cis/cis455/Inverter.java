@@ -21,7 +21,7 @@ import edu.upenn.cis.cis455.utils.ParserWritable;
 public class Inverter extends Reducer<ParserWritable, ParserWritable, Text, Text> {
     private static final Logger logger = LogManager.getLogger(Inverter.class);
 
-    private static final int MAX_HIT_SIZE = 512;
+    private static final int MAX_HIT_SIZE = 256;
 
     private StorageImpl store;
     private Map<Integer, HitList> hitLists;

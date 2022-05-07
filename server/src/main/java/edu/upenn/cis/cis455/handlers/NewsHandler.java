@@ -14,7 +14,12 @@ import java.io.InputStream;
 
 import spark.HaltException;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 public class NewsHandler implements Route {
+    private static final Logger logger = LogManager.getLogger(NewsHandler.class);
+
     private String apiKey;
 
     public NewsHandler() {
@@ -23,18 +28,16 @@ public class NewsHandler implements Route {
             prop.load(in);
             apiKey = prop.getProperty("news.apiKey");
         } catch (IOException e) {
-            e.printStackTrace();
+            throw new RuntimeException("Failed to load config");
         }
     }
 
     @Override
     public Object handle(Request req, Response res) throws HaltException {
-        res.type("application/json");
-
         String query = req.queryParams("query");
         String targetUrl = "https://newsapi.org/v2/everything?q=" + query + "&language=en";
         HttpURLConnection conn = null;
-        String data = "";
+        String data = null;
 
         try {
             URL url = new URL(targetUrl);
@@ -44,12 +47,12 @@ public class NewsHandler implements Route {
             conn.setRequestProperty("X-Api-Key", apiKey);
 
             if (conn.getResponseCode() != 200) {
-                throw new RuntimeException("GET request to News API failed: "
-                        + conn.getResponseCode());
+                logger.error("GET request to News API failed: {}", conn.getResponseCode());
+                res.status(204);
+			    return "No result from News";
             }
 
-            BufferedReader br = new BufferedReader(new InputStreamReader(
-                    (conn.getInputStream())));
+            BufferedReader br = new BufferedReader(new InputStreamReader((conn.getInputStream())));
             StringBuilder sb = new StringBuilder();
             String inputLine;
 
@@ -60,13 +63,16 @@ public class NewsHandler implements Route {
             br.close();
             data = sb.toString();
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("An error occurred:", e);
+            res.status(500);
+			return e.getMessage();
         } finally {
             if (conn != null) {
                 conn.disconnect();
             }
         }
 
+        res.type("application/json");
         return data;
     }
 }
