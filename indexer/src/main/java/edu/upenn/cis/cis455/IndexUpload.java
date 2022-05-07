@@ -46,17 +46,24 @@ public class IndexUpload {
         }
     }
 
-    public static void createForwardIndexTable(Connection conn) throws SQLException {
-        String forwardIndexTable = "CREATE TABLE \"ForwardIndex\" AS " +
-                                   "SELECT doc_id, SUM(tf) AS length FROM \"Posting\" GROUP BY doc_id";
+    public static void createForwardIndexTables(Connection conn) throws SQLException {
+        String docLengthTable = "CREATE TABLE \"DocLength\" AS " +
+                                "SELECT doc_id, SUM(tf) AS length FROM \"Posting\" GROUP BY doc_id";
 
-        String addPrimaryKey = "ALTER TABLE \"ForwardIndex\" ADD PRIMARY KEY (doc_id)";
+        String forwardIndex = "CREATE TABLE \"ForwardIndex\" AS " +
+                              "SELECT p.doc_id AS doc_id, l.id AS term_id, p.hit_id_offset AS hit_id_offset, p.tf AS n_hit " + 
+                              "FROM \"Lexicon\" l " + 
+                              "JOIN \"Posting\" p ON p.id >= l.posting_id_offset AND p.id < l.posting_id_offset + l.df";
 
         try (Statement stmt = conn.createStatement()) {
+            stmt.executeUpdate("DROP TABLE IF EXISTS \"DocLength\"");
             stmt.executeUpdate("DROP TABLE IF EXISTS \"ForwardIndex\"");
 
-            stmt.executeUpdate(forwardIndexTable);
-            stmt.executeUpdate(addPrimaryKey);
+            stmt.executeUpdate(docLengthTable);
+            stmt.executeUpdate("ALTER TABLE \"DocLength\" ADD PRIMARY KEY (doc_id)");
+            
+            stmt.executeUpdate(forwardIndex);
+            stmt.executeUpdate("CREATE INDEX doc_term_idx ON \"ForwardIndex\" (doc_id, term_id)");
         }
     }
 
@@ -70,7 +77,7 @@ public class IndexUpload {
         String postingInsert = "INSERT INTO \"Posting\" (id, doc_id, tf, hit_id_offset) " +
                                "VALUES (?, ?, ?, ?)";
         String lexiconInsert = "INSERT INTO \"Lexicon\" (term, df, posting_id_offset) " +
-                               "VALUES (?, ?, ?)";
+                               "VALUES (?, ?, ?) ON CONFLICT (term) DO NOTHING";
 
         PreparedStatement pstmtTerm = conn.prepareStatement(lexiconInsert);
         PreparedStatement pstmtHit = conn.prepareStatement(hitInsert);
@@ -234,8 +241,8 @@ public class IndexUpload {
             System.err.println("Uploading index file...");
             uploadIndexFile(conn, args[0]);
 
-            System.err.println("Creating forward index table...");
-            createForwardIndexTable(conn);
+            System.err.println("Creating forward index tables...");
+            createForwardIndexTables(conn);
 
             System.err.println("Done!");
         } catch (Exception e) {
