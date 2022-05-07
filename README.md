@@ -43,11 +43,11 @@ npm start
 
 ## Precomputed Components
 - [Indexer](indexer/README.md)
-- [PageRank](pagerank/pagerank/README.md)
-- [Weblinkgraph](pagerank/weblinkgraph/README.md)
-- [Crawler](crawler/README.md)
+- [PageRank](pagerank/pagerank/README)
+- [Weblinkgraph](pagerank/weblinkgraph/README)
+- [Crawler](crawler/README)
 
-### Team members
+## Team members
 - Yukai Yang (yukaiy)
 - Jiyi Ming (sylviaji)
 - Hongyu Zhang (hz53)
