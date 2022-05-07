@@ -14,7 +14,12 @@ import java.io.InputStreamReader;
 
 import spark.HaltException;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 public class YelpHandler implements Route {
+    private static final Logger logger = LogManager.getLogger(YelpHandler.class);
+
     private String apiKey;
 
     public YelpHandler() {
@@ -23,7 +28,7 @@ public class YelpHandler implements Route {
             prop.load(in);
             apiKey = prop.getProperty("yelp.apiKey");
         } catch (IOException e) {
-            e.printStackTrace();
+            throw new RuntimeException("Failed to load config");
         }
     }
 
@@ -32,8 +37,7 @@ public class YelpHandler implements Route {
         String term = req.params("term");
         String location = req.params("location");
 
-        String targetUrl = "https://api.yelp.com/v3/businesses/search?term=" + term + "&location=" + location
-                + "&limit=50";
+        String targetUrl = "https://api.yelp.com/v3/businesses/search?term=" + term + "&location=" + location + "&limit=50";
         HttpURLConnection conn = null;
         String data = null;
 
@@ -45,12 +49,12 @@ public class YelpHandler implements Route {
             conn.setRequestProperty("Authorization", "Bearer " + apiKey);
 
             if (conn.getResponseCode() != 200) {
-                throw new RuntimeException("GET request to Yelp API failed: "
-                        + conn.getResponseCode());
+                logger.error("GET request to Yelp API failed: {}", conn.getResponseCode());
+                res.status(204);
+			    return "No result from Yelp";
             }
 
-            BufferedReader br = new BufferedReader(new InputStreamReader(
-                    (conn.getInputStream())));
+            BufferedReader br = new BufferedReader(new InputStreamReader((conn.getInputStream())));
             StringBuilder sb = new StringBuilder();
             String inputLine;
 
@@ -61,13 +65,16 @@ public class YelpHandler implements Route {
             br.close();
             data = sb.toString();
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("An error occurred:", e);
+            res.status(500);
+			return e.getMessage();
         } finally {
             if (conn != null) {
                 conn.disconnect();
             }
         }
 
+        res.type("application/json");
         return data;
     }
 }

@@ -23,15 +23,19 @@ import org.apache.logging.log4j.Logger;
 public class SearchHandler implements Route {
 	private static final Logger logger = LogManager.getLogger(SearchHandler.class);
 
-	private static final int TOPK = 100;
+	private static final double BM25_K = 2.0;
+	private static final double BM25_B = 0.75;
+	private static final double PAGERANK_THRESH = 0.2;
+	private static final double PAGERANK_FACTOR = 1.0;
+	private static final int TOPK = 200;
 	private static final int PAGE_SIZE = 10;
-	private static final int EXCERPT_SIZE = 50;
+	private static final int EXCERPT_SIZE = 30;
 
 	private Retrieval retrieval;
 	private ObjectMapper mapper = new ObjectMapper();
 
 	public SearchHandler() {
-		retrieval = new Retrieval(1.2, 0.75, 1.0);
+		retrieval = new Retrieval(BM25_K, BM25_B, PAGERANK_THRESH, PAGERANK_FACTOR);
 	}
 
 	@Override
@@ -40,6 +44,8 @@ public class SearchHandler implements Route {
 		String page = req.queryParams("page");
 		int pageIdx = (page != null) ? Integer.parseInt(page) - 1 : 0;
 
+		logger.debug("Query: {}", query);
+
 		Map<Integer, RankScore> ranks = null;
 		List<RetrievalResult> data = null;
 		try {
@@ -47,12 +53,14 @@ public class SearchHandler implements Route {
 
 			ranks = retrieval.rank(termVec, TOPK);
 			if (ranks == null) {
+				logger.debug("No document match");
 				res.status(204);
 				return "Your search - " + query + " - did not match any pages";
 			}
 
 			int offset = pageIdx * PAGE_SIZE;
 			if (offset >= ranks.size()) {
+				logger.debug("Page idx out of bound: {}", pageIdx);
 				res.status(400);
 				return "Requested page out of bound";
 			}

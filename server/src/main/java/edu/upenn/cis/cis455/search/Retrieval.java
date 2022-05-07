@@ -49,8 +49,8 @@ import static org.apache.logging.log4j.core.config.Configurator.setLevel;
 public class Retrieval {
     private static final Logger logger = LogManager.getLogger(Retrieval.class);
 
-    private static final int TERM_CACHE_SIZE = 1000;
-    private static final int DOC_CACHE_SIZE = 100000;
+    private static final int TERM_CACHE_SIZE = 5000;
+    private static final int DOC_CACHE_SIZE = 200000;
 
     private HikariDataSource ds;
 
@@ -73,7 +73,7 @@ public class Retrieval {
     private int n;
     private double avgDl;
 
-    public Retrieval(double bm25K, double bm25B, double pageRankFactor) {
+    public Retrieval(double bm25K, double bm25B, double pageRankThresh, double pageRankFactor) {
         this.bm25K = bm25K;
         this.bm25B = bm25B;
         this.pageRankFactor = pageRankFactor;
@@ -128,7 +128,7 @@ public class Retrieval {
 
         try (Connection conn = ds.getConnection()) {
             // Precompute corpus size from forward index
-            String sql = "SELECT COUNT(*) AS n FROM \"ForwardIndex\"";
+            String sql = "SELECT COUNT(*) AS n FROM \"DocLength\"";
             try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
                 ResultSet rs = pstmt.executeQuery();
                 rs.next();
@@ -137,7 +137,7 @@ public class Retrieval {
             logger.debug("Precomputed corpus size: {}", n);
 
             // Precompute average document length from forward index
-            sql = "SELECT AVG(length) AS avg_dl FROM \"ForwardIndex\"";
+            sql = "SELECT AVG(length) AS avg_dl FROM \"DocLength\"";
             try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
                 ResultSet rs = pstmt.executeQuery();
                 rs.next();
@@ -149,31 +149,22 @@ public class Retrieval {
                      "FROM \"Lexicon\" " +
                      "WHERE term = ANY (?)";
 
-            docSql = "SELECT f.doc_id, f.length, r.rank " +
-                     "FROM \"ForwardIndex\" f " +
-                     "LEFT JOIN \"PageRankTest\" r on r.doc_id = f.doc_id " +
-                     "WHERE f.doc_id = ANY (?)";
+            docSql = "SELECT d.doc_id, d.length, r.rank " +
+                     "FROM \"DocLength\" d " +
+                     "LEFT JOIN \"PageRank\" r on r.doc_id = d.doc_id " +
+                     "WHERE d.doc_id = ANY (?) AND r.rank > " + pageRankThresh;
 
-            occSql = "SELECT l.id, l.df, array_agg(p.doc_id), array_agg(p.tf)" +
+            occSql = "SELECT l.id, l.df, array_agg(p.doc_id), array_agg(p.tf) " +
                      "FROM \"Lexicon\" l " +
                      "JOIN \"Posting\" p ON p.id >= l.posting_id_offset AND p.id < l.posting_id_offset + l.df " +
                      "WHERE l.id = ANY (?) " +
                      "GROUP BY l.id, l.df";
 
-            // metaSql = "SELECT d.id, d.url, d.content, array_agg(h.position order by h.position) " +
-            //           "FROM \"Lexicon\" l " +
-            //           "JOIN \"Posting\" p ON p.id >= l.posting_id_offset AND p.id < l.posting_id_offset + l.df " +
-            //           "JOIN \"Document\" d ON d.id = p.doc_id " +
-            //           "JOIN \"Hit\" h on h.id = p.hit_id_offset " +
-            //           "WHERE l.id = ANY (?) AND d.id = ANY (?) " +
-            //           "GROUP BY d.id, d.url, d.content";
-
             metaSql = "SELECT d.id, d.url, d.content, array_agg(h.position order by h.position) " +
-                      "FROM \"Lexicon\" l " +
-                      "JOIN \"Posting\" p ON p.id >= l.posting_id_offset AND p.id < l.posting_id_offset + l.df " +
-                      "JOIN \"Hit\" h on h.id >= p.hit_id_offset AND h.id < p.hit_id_offset + p.tf " +
-                      "JOIN \"Document\" d ON d.id = p.doc_id " +
-                      "WHERE l.id = ANY (?) AND d.id = ANY (?) " +
+                      "FROM \"ForwardIndex\" f " +
+                      "JOIN \"Hit\" h ON h.id >= f.hit_id_offset AND h.id < f.hit_id_offset + f.n_hit " +
+                      "JOIN \"Document\" d ON d.id = f.doc_id " +
+                      "WHERE d.id = ANY (?) AND f.term_id = ANY (?) " +
                       "GROUP BY d.id, d.url, d.content";
         }
         catch (SQLException e) {
@@ -257,8 +248,6 @@ public class Retrieval {
         Map<Integer, TermOccurrence> occurrences = new HashMap<>();
         Set<Integer> allDocIds = new HashSet<>();
 
-        // logger.debug(termCache);
-
         /** Fetch term occurrences */ 
         Set<Integer> termIdsToFetch = new HashSet<>(termVec.keySet());
         // Fetch from cache if present
@@ -279,20 +268,20 @@ public class Retrieval {
                 List<Integer> docIds = Arrays.asList((Integer[])rs.getArray(3).getArray());
                 List<Integer> tfs = Arrays.asList((Integer[])rs.getArray(4).getArray());
 
+                TermOccurrence occ = new TermOccurrence(df, docIds, tfs);
+                occurrences.put(termId, occ);
+                termCache.put(termId, occ); // update cache
+
                 allDocIds.addAll(docIds);
-                occurrences.put(termId, new TermOccurrence(df, docIds, tfs));
             }
         }
-        logger.debug("Found {} documents", allDocIds.size());
+        logger.debug("Found {} matches", allDocIds.size());
         if (allDocIds.isEmpty()) {
             return null;
         }
-
-        // logger.debug(occurrences.keySet());
-        termIdsToFetch.forEach(termId -> termCache.put(termId, occurrences.get(termId))); // update cache
         watch.stop();
 
-        /** Fetch data (pageRank & length) for relevant documents */ 
+        /** Fetch data (pageRank & length) for document matches */ 
         watch.start("Fetch document data");
         Map<Integer, DocumentData> docData = new HashMap<>();
         Set<Integer> docIdsToFetch = new HashSet<>(allDocIds);
@@ -310,16 +299,18 @@ public class Retrieval {
                 int docId = rs.getInt(1);
                 int dl = rs.getInt(2);
                 double pageRank = Math.max(rs.getDouble(3), 0.15);
-                docData.put(docId, new DocumentData(dl, pageRank));
+                DocumentData data = new DocumentData(dl, pageRank);
+                docData.put(docId, data);
+                docCache.put(docId, data); // update cache
             }
         }
-        docIdsToFetch.forEach(docId -> docCache.put(docId, docData.get(docId))); // update cache
+        logger.debug("Ranking {} after filtering", docData.size());
         watch.stop();
 
         watch.start("BM25 & sort topK");
         /** Compute BM25 for each term */    
         Map<Integer, Double> bm25Vector = new HashMap<>();
-        allDocIds.forEach(docId -> bm25Vector.put(docId, 0.0));
+        docData.keySet().forEach(docId -> bm25Vector.put(docId, 0.0)); // init bm25 to 0
         for (var entry : occurrences.entrySet()) {
             int termId = entry.getKey();
             TermOccurrence occurrence = entry.getValue();
@@ -331,8 +322,11 @@ public class Retrieval {
 
             for (int i = 0; i < docIds.size(); i++) {
                 int docId = docIds.get(i);
-                double bm25 = computeBM25(tfs.get(i), df, docData.get(docId).getDl());
-                bm25Vector.put(docId, bm25Vector.get(docId) + bm25 * count);
+                // documents with extremely low PageRank are filtered
+                if (docData.containsKey(docId)) {
+                    double bm25 = computeBM25(tfs.get(i), df, docData.get(docId).getDl());
+                    bm25Vector.put(docId, bm25Vector.get(docId) + bm25 * count);
+                }
             }
         }
         
@@ -384,9 +378,9 @@ public class Retrieval {
         Map<Integer, RetrievalResult> results = new LinkedHashMap<>();
         ranks.keySet().stream().skip(offset).limit(limit)
             .forEach(docId -> results.put(docId, null));
-
-        pstmtMeta.setArray(1, conn.createArrayOf("integer", termVec.keySet().toArray()));
-        pstmtMeta.setArray(2, conn.createArrayOf("integer", results.keySet().toArray()));
+        
+        pstmtMeta.setArray(1, conn.createArrayOf("integer", results.keySet().toArray()));
+        pstmtMeta.setArray(2, conn.createArrayOf("integer", termVec.keySet().toArray()));
         try (ResultSet rs = pstmtMeta.executeQuery()) {
             watch.stop();
 
@@ -408,7 +402,7 @@ public class Retrieval {
                     Document parsed = Jsoup.parse(content);
                     String title = parsed.title();
                     
-                    String excerpt = getExcerpt(parsed.text(), positions, excerptSize);
+                    String excerpt = extractExcerpt(parsed.text(), positions, excerptSize);
                     results.put(docId, new RetrievalResult(url.toString(), baseUrl, path, title, excerpt,
                                                            bm25, pageRank, score));
                 } catch (MalformedURLException e) {
@@ -472,10 +466,10 @@ public class Retrieval {
      * @param maxTokens The maximum number of tokens to include in the excerpt.
      * @return A string of the excerpt with the highlighted words.
      */
-    private String getExcerpt(String text, Integer[] positions, int maxTokens) {
+    private String extractExcerpt(String text, Integer[] positions, int maxTokens) {
         String[] tokens = threadLocalTokenizer.get().tokenize(text);
 
-        int start_pos = Math.max(positions[0] - 10, 0);
+        int start_pos = Math.max(positions[0] - 5, 0);
         int end_pos = Math.min(start_pos + maxTokens, tokens.length);
 
         for (int pos : positions) {
@@ -494,13 +488,9 @@ public class Retrieval {
     }
 
     public static void main(String[] args) throws Exception {
-        if (args.length < 1) {
-            System.err.println("Syntax: Retrieval {database url}");
-            System.exit(1);
-        }
         setLevel("edu.upenn.cis.cis455", Level.DEBUG);
 
-        Retrieval retrieval = new Retrieval(1.2, 0.75, 1.0);
+        Retrieval retrieval = new Retrieval(2.0, 0.75, 0.2, 1.0);
         BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
 
         String query = "";
@@ -514,7 +504,7 @@ public class Retrieval {
             watch.stop();
             
             watch.start("Rank");
-            Map<Integer, RankScore> ranks = retrieval.rank(termVec, 100);
+            Map<Integer, RankScore> ranks = retrieval.rank(termVec, 200);
             watch.stop();
             if (ranks != null) {
                 watch.start("Retrieve");

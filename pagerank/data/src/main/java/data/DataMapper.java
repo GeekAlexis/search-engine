@@ -44,8 +44,8 @@ public class DataMapper extends Mapper<LongWritable, Text, Text, Text> {
 			String[] content = line.split("::\\?\\?<2<spli75tt,");
 			int length = content.length;
 			
-			// Get url, outdegree, and previous rank
-			String url = content[0].trim().replace("'", "''");;
+			// Get url and rank
+			String url = content[0].replace("'", "''");;
 			Double rank = Double.parseDouble(content[length - 1]);
 			
 			// Connect to database to find corresponding url
@@ -57,7 +57,7 @@ public class DataMapper extends Mapper<LongWritable, Text, Text, Text> {
 
 			ResultSet rs = stmt.executeQuery(sql);
 			
-			String sql2 = "INSERT INTO \"PageRankMid\" (doc_id, rank) VALUES (?,?);";
+			String sql2 = "INSERT INTO \"PageRank\" (doc_id, rank) VALUES (?,?) ON CONFLICT (doc_id) DO NOTHING;";
 			PreparedStatement pst = c.prepareStatement(sql2);
 						
 			if (rs.next()) {
@@ -75,8 +75,6 @@ public class DataMapper extends Mapper<LongWritable, Text, Text, Text> {
 			c.setAutoCommit(true);
 			c.close();
 			
-			context.write(new Text(""), new Text(""));
-					
 		} catch (Exception e) {
 			e.printStackTrace();
 			System.exit(1);

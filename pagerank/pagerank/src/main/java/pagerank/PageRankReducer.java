@@ -15,12 +15,14 @@ public class PageRankReducer extends Reducer<Text, Text, NullWritable, Text> {
 		try {
 			StringBuffer output = new StringBuffer();
 			Double rank = 0.0;
+			String separator = "::??<2<spli75tt,";
+			String delimiter = "::spli75tt.";
 			
 			for (Text value:values) {
 				Double vote = null;
 				String content = value.toString();
 				
-				if (content.contains("::??<2<spli75tt,")) {
+				if (content.endsWith(separator)) {
 					// Get url's outlink information
 					output.append(content);
 				} else if (!content.isEmpty()) {
@@ -41,7 +43,7 @@ public class PageRankReducer extends Reducer<Text, Text, NullWritable, Text> {
 			if (!output.toString().isEmpty()) {	
 				output.append(rank);
 				// Add a unique record delimiter at the end of each record
-				context.write(NullWritable.get(), new Text(output.toString() + "::spli75tt."));
+				context.write(NullWritable.get(), new Text(output.toString() + delimiter));
 			}
 			
 		} catch (Exception e) {
