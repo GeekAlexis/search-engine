@@ -4,7 +4,7 @@ Our search engine is highly optimized with server-side caching and concurrent qu
 Document ranking incorporates BM25 and PageRank for high-quality retrieval.
 Excerpts with highlighted hits are loaded dynamically and shown on the result page.
 Web UI supports autocomplete and integrates search results from News and Yelp webservices.
-Document index is built by distributed indexer/PageRank/crawler and stored in RDS (PostgreSQL). 
+Document index and metadata are built by distributed crawler/indexer/PageRank analysis and stored in RDS (PostgreSQL). 
 
 ## Tech
 
@@ -15,15 +15,23 @@ Document index is built by distributed indexer/PageRank/crawler and stored in RD
 - [Yelp Fushion API](https://www.yelp.com/developers/documentation/v3/get_started)
 - [IP Geolocation API](https://ip-api.com/)
 
-## Run Search Engine
+## Quick Start
 
 ### Server
-The configuration `src/main/resources/config.properties` that contains API keys and database username/password is not provided.
+Specify `src/main/resources/config.properties` that contains your API keys and database credentials (not provided).
+
+```ini
+db.url=jdbc:postgresql://database.abcdefg.us-east-1.rds.amazonaws.com:1234/postgresdb
+db.user=username
+db.pass=password
+news.apiKey=abcdefghijk
+yelp.apiKey=abcdefghijk
+```
 
 ```sh
 cd server
 mvn clean install
-mvn exec:java {port}
+mvn exec:java
 ```
 
 ### Client
@@ -33,35 +41,11 @@ npm i
 npm start
 ```
 
-## Install AWS CLI
-
-```sh
-curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-unzip awscliv2.zip
-sudo ./aws/install
-```
-
-## Run Indexer on EMR
-
-### Pacakge into JAR
-```sh
-cd indexer
-mvn clean install
-aws s3 cp target/indexer-1.0-SNAPSHOT-launcher.jar s3://<YOUR S3 BUCKET>/indexer-1.0-SNAPSHOT-launcher.jar
-```
-
-### Launch EMR-6.6.0
-Configure instances to use Java 11. 
-Submit step and specify arguments: `s3://<YOUR S3 BUCKET>/in/ s3://<YOUR S3 BUCKET>/out/ temp/`
-
-### Upload Index to RDS
-```sh
-cd indexer
-aws s3 cp s3://<YOUR S3 BUCKET>/out/ out/ --recursive
-cat out/part* > merged-index
-
-mvn exec:java merged-index
-```
+## Precomputed Components
+- [Indexer](indexer/README.md)
+- [PageRank](pagerank/pagerank/README.md)
+- [Weblinkgraph](pagerank/weblinkgraph/README.md)
+- [Crawler](crawler/README.md)
 
 ### Team members
 - Yukai Yang (yukaiy)
