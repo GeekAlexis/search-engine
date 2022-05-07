@@ -4,10 +4,6 @@ import org.apache.hadoop.mapreduce.*;
 import org.apache.hadoop.io.*;
 
 import java.net.URI;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.Statement;
-
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -21,29 +17,28 @@ public class PageRankDriver {
 	
 	public static void main (String[] args) throws Exception {
 		
-		try {
-			Connection c = connectDB();
-			createTable(c);
-			c.close();
+		if (args.length != 3) {
+			System.out.println("Syntax: {input path} {output path} {number of iteration}");
+			System.exit(1);
+		}
+		
+		try {	
+			String input = args[0];
+			String s3Output = args[1];
+			int number = Integer.parseInt(args[2]);
 			
 			Configuration conf = new Configuration();
-			conf.set("fs.s3.awsAccessKeyId", "AKIAZFMQMWQO4MKB2PEH");
-			conf.set("fs.s3.awsSecretAccessKey", "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");
-			conf.set("textinputformat.record.delimiter", "::spli75tt.\n");
-			
-			String input = "s3://graphall/output/";
-			String s3Output = "s3://1-20000/";
-			
+			conf.set("textinputformat.record.delimiter", "::spli75tt.\n");			
 			FileSystem fs = FileSystem.get(new URI(s3Output), conf);
 			
 			// Run pagerank for each iteration
-			for (int i = 0; i < 2; i++) {
+			for (int i = 0; i < number; i++) {
 				
 				if (i != 0) {
-					input = s3Output + "iteration" + Integer.toString(i);
+					input = s3Output + "/iteration" + Integer.toString(i);
 				}
 				
-				String output = s3Output + "iteration" + Integer.toString(i + 1);
+				String output = s3Output + "/iteration" + Integer.toString(i + 1);
 				
 				// Create job
 				Job job = Job.getInstance(conf);
@@ -78,7 +73,7 @@ public class PageRankDriver {
 				// To save storage, delete output from 2 iterations ago
 				if (i >= 2) {
 					try {
-						fs.delete(new Path(s3Output + "iteration" + Integer.toString(i - 1)), true);
+						fs.delete(new Path(s3Output + "/iteration" + Integer.toString(i - 1)), true);
 					} catch (Exception e) {
 						e.printStackTrace();
 						System.exit(1);
@@ -91,60 +86,5 @@ public class PageRankDriver {
 			System.exit(1);
 		}
 	}
-	
-	/**
-     * Set up database connection to AWS RDS Postgresql.
-     * @return connection
-     */
-	public static Connection connectDB() throws Exception {
-		
-		Connection c = null;
-		
-	    try {
-	        Class.forName("org.postgresql.Driver");
-	        c = DriverManager
-	                .getConnection("jdbc:postgresql://database-1.cnw1rlie1jes.us-east-1.rds.amazonaws.com:5432/postgresdb",
-	                        "postgres", "cis555db");
-	        System.out.println("Opened database successfully");
-   
-	    } catch (Exception e) {
-	        e.printStackTrace();
-	        System.out.println("Failed to open database");
-	        System.exit(1);
-	    }
-	    
-	    return c;
-	    
-	}
-	
-	/**
-	 * Create table in RDS to store pagerank.
-	 * @param c connection
-	 * @throws Exception
-	 */
-    public static void createTable(Connection c) throws Exception {
-    	
-    	Statement stmt = null;
-    	
-    	try {
-    		stmt = c.createStatement();
-    		String sql = "CREATE TABLE \"PageRank\" "
-    				+ "(" 
-    				+ "id SERIAL PRIMARY KEY"
-    				+ "doc_id INT PRIMARY KEY,"
-                    + "rank DOUBLE PRECISION NOT NULL DEFAULT 0"
-                    + ");";
-    		
-            stmt.executeUpdate("DROP TABLE IF EXISTS \"PageRank\"");
-            stmt.executeUpdate(sql);
-            c.commit();
-            stmt.close();
-            System.out.println("Created table");
-    		
-    	} catch (Exception e) {
-    		e.printStackTrace();
-    		System.exit(1);
-    	}
-    }
 	
 }

@@ -44,6 +44,7 @@ public class WebLinkGraphMapper extends Mapper<IntWritable, Text, Text, Text> {
 			// Get file name, which is id
 			int id = key.get();
 			String content = value.toString();
+			String identifier = "::??<2<spli75tt,";
 			
 			// Connect to database to find corresponding url
 			Connection c = connectDB();
@@ -58,6 +59,8 @@ public class WebLinkGraphMapper extends Mapper<IntWritable, Text, Text, Text> {
 				// Extract hyperlinks
 				Document doc = Jsoup.parse(content, url);
 				Elements links = doc.select("a[href]");
+				
+				context.write(new Text(url), new Text(identifier));
 				
 				for (Element link:links) {
 					// Convert them to absolute url

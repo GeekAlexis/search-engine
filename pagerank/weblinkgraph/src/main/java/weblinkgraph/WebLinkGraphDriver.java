@@ -4,8 +4,6 @@ import org.apache.hadoop.mapreduce.*;
 import org.apache.hadoop.io.*;
 
 import java.net.URI;
-import java.sql.Connection;
-import java.sql.DriverManager;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -18,17 +16,19 @@ public class WebLinkGraphDriver {
 	
 	public static void main (String[] args) throws Exception {
 				
-		// Set input and output paths in S3
-		String input = "s3://555docbucket/in"; 
-		String output = "s3://graphall/output";
-
+		if (args.length != 2) {
+			System.out.println("Syntax: {input path} {output path}");
+			System.exit(1);
+		}
+		
+		String input = args[0];
+		String output = args[1];
+		
 		try {
 			// Set configuration for map-reduce and S3 access
 			Configuration conf = new Configuration();
 			FileSystem fs = FileSystem.get(new URI(output), conf);
 			conf.set("mapreduce.input.fileinputformat.split.maxsize", "268435456");	
-			conf.set("fs.s3.awsAccessKeyId", "AKIAZFMQMWQO4MKB2PEH");
-			conf.set("fs.s3.awsSecretAccessKey", "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");
 			
 			// Create job
 			Job job = Job.getInstance(conf);
