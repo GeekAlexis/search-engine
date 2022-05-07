@@ -4,7 +4,7 @@ Our search engine is highly optimized with server-side caching and concurrent qu
 Document ranking incorporates BM25 and PageRank for high-quality retrieval.
 Excerpts with highlighted hits are loaded dynamically and shown on the result page.
 Web UI supports autocomplete and integrates search results from News and Yelp webservices.
-Document index and metadata are built by distributed crawler/indexer/PageRank analysis and stored in RDS (PostgreSQL). 
+Document index and metadata are built by distributed crawler/indexer/PageRank analysis and stored in RDS (PostgreSQL).
 
 ## Tech
 
@@ -18,6 +18,7 @@ Document index and metadata are built by distributed crawler/indexer/PageRank an
 ## Quick Start
 
 ### Server
+
 Specify `src/main/resources/config.properties` that contains your API keys and database credentials (not provided).
 
 ```ini
@@ -35,6 +36,9 @@ mvn exec:java
 ```
 
 ### Client
+
+To run on local development machine, node >= 14.0.0 is required.
+
 ```sh
 cd client
 npm i
@@ -42,13 +46,15 @@ npm start
 ```
 
 ## Precomputed Components
+
 - [Indexer](indexer/README.md)
 - [PageRank](pagerank/pagerank/README)
 - [Weblinkgraph](pagerank/weblinkgraph/README)
 - [Crawler](crawler/README)
 
 ## Team members
+
 - Yukai Yang (yukaiy)
-- Jiyi Ming (sylviaji)
+- Yimin Ji (sylviaji)
 - Hongyu Zhang (hz53)
 - Yuchen Ding (ycding)
