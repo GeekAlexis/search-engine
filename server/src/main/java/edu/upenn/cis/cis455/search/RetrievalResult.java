@@ -10,6 +10,12 @@ public class RetrievalResult {
     private double pageRank;
     private double score;
 
+    public RetrievalResult(double bm25, double pageRank, double score) {
+        this.bm25 = bm25;
+        this.pageRank = pageRank;
+        this.score = score;
+    }
+
     public RetrievalResult(String url, String baseUrl, String path, String title,
                            String excerpt, double bm25, double pageRank, double score) {
         this.url = url;

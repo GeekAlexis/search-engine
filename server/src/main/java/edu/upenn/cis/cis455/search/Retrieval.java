@@ -11,9 +11,11 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.PriorityQueue;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.Queue;
 import java.util.Properties;
 import java.util.stream.Collectors;
 import java.net.URL;
@@ -127,7 +129,7 @@ public class Retrieval {
         ds = new HikariDataSource(config);
 
         try (Connection conn = ds.getConnection()) {
-            // Precompute corpus size from forward index
+            // Precompute corpus size
             String sql = "SELECT COUNT(*) AS n FROM \"DocLength\"";
             try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
                 ResultSet rs = pstmt.executeQuery();
@@ -136,7 +138,7 @@ public class Retrieval {
             }
             logger.debug("Precomputed corpus size: {}", n);
 
-            // Precompute average document length from forward index
+            // Precompute average document length
             sql = "SELECT AVG(length) AS avg_dl FROM \"DocLength\"";
             try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
                 ResultSet rs = pstmt.executeQuery();
@@ -233,7 +235,7 @@ public class Retrieval {
      * @param topk the number of documents to return
      * @return A ordered map of RankScore objects.
      */
-    public Map<Integer, RankScore> rank(Map<Integer, Integer> termVec, int topk) throws SQLException {
+    public List<RankScore> rank(Map<Integer, Integer> termVec, int topk) throws SQLException {
         if (termVec.isEmpty()) {
             return null;
         }
@@ -310,7 +312,7 @@ public class Retrieval {
         watch.start("BM25 & sort topK");
         /** Compute BM25 for each term */    
         Map<Integer, Double> bm25Vector = new HashMap<>();
-        docData.keySet().forEach(docId -> bm25Vector.put(docId, 0.0)); // init bm25 to 0
+        docData.keySet().forEach(docId -> bm25Vector.put(docId, 0.)); // init bm25 to 0
         for (var entry : occurrences.entrySet()) {
             int termId = entry.getKey();
             TermOccurrence occurrence = entry.getValue();
@@ -330,20 +332,21 @@ public class Retrieval {
             }
         }
         
-        /** Weight bm25 and PageRank in overall score */
-        Map<Integer, RankScore> scoreVector = new HashMap<>();
+        /** Combine bm25 and PageRank, keep top K */
+        Queue<RankScore> topkHeap = new PriorityQueue<>();
         bm25Vector.forEach((docId, bm25) -> {
             double pageRank = docData.get(docId).getPageRank();
             double weighted = weightScore(bm25, pageRank);
-            scoreVector.put(docId, new RankScore(bm25, pageRank, weighted));
+
+            topkHeap.add(new RankScore(docId, bm25, pageRank, weighted));
+            if (topkHeap.size() > topk) {
+                topkHeap.poll();
+            }
         });
 
-        /** Sort and retrieve top K */
-        Map<Integer, RankScore> topkScoreVector = scoreVector.entrySet().parallelStream()
-            .sorted(Map.Entry.comparingByValue(Comparator.reverseOrder()))
-            .limit(topk)
-            .collect(Collectors.toMap(
-                Map.Entry::getKey, Map.Entry::getValue, (e1, e2) -> e1, LinkedHashMap::new));        
+        // Sort top K scores
+        List<RankScore> ranks = topkHeap.stream()
+            .sorted(Comparator.reverseOrder()).collect(Collectors.toList());       
 
         pstmtOcc.close();
         pstmtDoc.close();
@@ -351,22 +354,22 @@ public class Retrieval {
 
         watch.stop();
         logger.debug(watch.prettyPrint());
-        return topkScoreVector.isEmpty() ? null : topkScoreVector;
+        return ranks.isEmpty() ? null : ranks;
     }
 
     /**
      * Retrieve a subset of document urls and metadata given the ranks
      * 
+     * @param termVec
      * @param ranks
-     * @param terms
      * @param offset
      * @param limit
      * @param excerptSize
      * @return
      * @throws SQLException
      */
-    public List<RetrievalResult> retrieve(Map<Integer, RankScore> ranks,
-                                          Map<Integer, Integer> termVec,
+    public List<RetrievalResult> retrieve(Map<Integer, Integer> termVec,
+                                          List<RankScore> ranks,
                                           int offset,
                                           int limit,
                                           int excerptSize) throws SQLException {                
@@ -375,10 +378,13 @@ public class Retrieval {
 
         StopWatch watch = new StopWatch("Retrieve");
         watch.start("Fetch meta data");
+
         Map<Integer, RetrievalResult> results = new LinkedHashMap<>();
-        ranks.keySet().stream().skip(offset).limit(limit)
-            .forEach(docId -> results.put(docId, null));
-        
+        ranks.stream().skip(offset).limit(limit).forEach(rankScore -> {
+            results.put(rankScore.getDocId(),
+                        new RetrievalResult(rankScore.getBm25(), rankScore.getPageRank(), rankScore.getScore()));
+        });
+
         pstmtMeta.setArray(1, conn.createArrayOf("integer", results.keySet().toArray()));
         pstmtMeta.setArray(2, conn.createArrayOf("integer", termVec.keySet().toArray()));
         try (ResultSet rs = pstmtMeta.executeQuery()) {
@@ -387,10 +393,7 @@ public class Retrieval {
             watch.start("Collect results");
             while (rs.next()) {
                 int docId = rs.getInt(1);
-                double bm25 = ranks.get(docId).getBm25();
-                double pageRank = ranks.get(docId).getPageRank();
-                double score = ranks.get(docId).getScore();
-
+                RetrievalResult result = results.get(docId);
                 try {
                     URL url = new URL(rs.getString(2));
                     String baseUrl = url.getHost();
@@ -401,10 +404,13 @@ public class Retrieval {
 
                     Document parsed = Jsoup.parse(content);
                     String title = parsed.title();
-                    
                     String excerpt = extractExcerpt(parsed.text(), positions, excerptSize);
-                    results.put(docId, new RetrievalResult(url.toString(), baseUrl, path, title, excerpt,
-                                                           bm25, pageRank, score));
+
+                    result.setUrl(url.toString());
+                    result.setBaseUrl(baseUrl);
+                    result.setPath(path);
+                    result.setTitle(title);
+                    result.setExcerpt(excerpt);
                 } catch (MalformedURLException e) {
                     logger.error("Retrieved URL is invalid");
                 }       
@@ -504,11 +510,11 @@ public class Retrieval {
             watch.stop();
             
             watch.start("Rank");
-            Map<Integer, RankScore> ranks = retrieval.rank(termVec, 200);
+            List<RankScore> ranks = retrieval.rank(termVec, 200);
             watch.stop();
             if (ranks != null) {
                 watch.start("Retrieve");
-                List<RetrievalResult> data = retrieval.retrieve(ranks, termVec, 0, 10, 50);
+                List<RetrievalResult> data = retrieval.retrieve(termVec, ranks, 0, 10, 50);
                 watch.stop();
 
                 ObjectMapper mapper = new ObjectMapper();

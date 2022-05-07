@@ -1,14 +1,24 @@
 package edu.upenn.cis.cis455.search;
 
 public class RankScore implements Comparable<RankScore> {
+    private int docId;
     private double bm25;
     private double pageRank;
     private double score;
 
-    public RankScore(double bm25, double pageRank, double score) {
+    public RankScore(int docId, double bm25, double pageRank, double score) {
+        this.docId = docId;
         this.bm25 = bm25;
         this.pageRank = pageRank;
         this.score = score;
+    }
+
+    public int getDocId() {
+        return docId;
+    }
+
+    public void setDocId(int docId) {
+        this.docId = docId;
     }
 
     public double getBm25() {
@@ -42,7 +52,7 @@ public class RankScore implements Comparable<RankScore> {
 
     @Override
     public String toString() {
-        return "RankScore [bm25=" + bm25 + ", pageRank=" + pageRank + ", score=" + score + "]";
+        return "RankScore [bm25=" + bm25 + ", docId=" + docId + ", pageRank=" + pageRank + ", score=" + score + "]";
     }
 
 }

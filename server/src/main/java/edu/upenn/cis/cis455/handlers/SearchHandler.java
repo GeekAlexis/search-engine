@@ -46,7 +46,7 @@ public class SearchHandler implements Route {
 
 		logger.debug("Query: {}", query);
 
-		Map<Integer, RankScore> ranks = null;
+		List<RankScore> ranks = null;
 		List<RetrievalResult> data = null;
 		try {
 			Map<Integer, Integer> termVec = retrieval.vectorize(query);
@@ -64,7 +64,7 @@ public class SearchHandler implements Route {
 				res.status(400);
 				return "Requested page out of bound";
 			}
-			data = retrieval.retrieve(ranks, termVec, offset, PAGE_SIZE, EXCERPT_SIZE);
+			data = retrieval.retrieve(termVec, ranks, offset, PAGE_SIZE, EXCERPT_SIZE);
 		} catch (SQLException e) {
 			logger.error("Failed to query database");
 			res.status(500);
