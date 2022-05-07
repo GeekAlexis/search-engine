@@ -1,5 +1,6 @@
-README Hongyu Zhang hz53@seas.upenn.edu
+# Web Link Graph
 
+Hongyu Zhang hz53@seas.upenn.edu
 
 This section creates the web link graph from the crawler and it is used in PageRank. It has 4 components.
 

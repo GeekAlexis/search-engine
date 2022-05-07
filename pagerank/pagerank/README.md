@@ -1,5 +1,6 @@
-README Hongyu Zhang hz53@seas.upenn.edu
+# PageRank
 
+Hongyu Zhang hz53@seas.upenn.edu
 
 This is the PageRank section of the CIS 555 Final Project. It has 4 components: PageRankDriver, PageRankMapper, PageRankReducer, and DataTransfer.
 
