@@ -24,6 +24,7 @@ function Businesses(props) {
       setLoading(false);
       setItems(data.slice(0, pageSize));
     }
+    setPage(1);
     fetch();
   }, [query]);
 
