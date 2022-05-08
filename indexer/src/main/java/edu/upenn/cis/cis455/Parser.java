@@ -41,7 +41,7 @@ public class Parser extends Mapper<IntWritable, Text, ParserWritable, ParserWrit
 
         String lang_detector_url = "https://dlcdn.apache.org/opennlp/models/langdetect/1.8.3/langdetect-183.bin";
         String tokenizer_url = "https://dlcdn.apache.org/opennlp/models/ud-models-1.0/opennlp-en-ud-ewt-tokens-1.0-1.9.3.bin";
-        
+
         try (InputStream modelIn = new URL(tokenizer_url).openStream()) {
             tokenizer = new TokenizerME(new TokenizerModel(modelIn));
         }
@@ -51,7 +51,7 @@ public class Parser extends Mapper<IntWritable, Text, ParserWritable, ParserWrit
         }
 
         normalizer = new AggregateCharSequenceNormalizer(
-            new EmojiCharSequenceNormalizer(), 
+            new EmojiCharSequenceNormalizer(),
             new UrlCharSequenceNormalizer(),
             new TwitterCharSequenceNormalizer(),
             new NumberCharSequenceNormalizer(),
@@ -83,7 +83,7 @@ public class Parser extends Mapper<IntWritable, Text, ParserWritable, ParserWrit
                 }
             }
         }
-        else {  
+        else {
             logger.info("Nonenglish document detected, skipping.");
         }
     }
@@ -98,7 +98,7 @@ public class Parser extends Mapper<IntWritable, Text, ParserWritable, ParserWrit
         token = token.replaceAll("[\u00AD\u2010\u2011\u2012\u2013\u2014\u2212\u2015]", "-"); /* hyphen (-) */
         token = token.trim().toLowerCase();
 
-        // Convert to lowercase and stem
+        // Stem
         token = stemmer.stem(token).toString();
 
         // Remove terms that contain whitespace or all punctuations

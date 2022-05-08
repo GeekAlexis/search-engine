@@ -6,7 +6,6 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -33,6 +32,8 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.springframework.util.StopWatch;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 
 import opennlp.tools.util.normalizer.*;
 import opennlp.tools.tokenize.TokenizerModel;
@@ -57,12 +58,12 @@ public class Retrieval {
     private HikariDataSource ds;
 
     private static ThreadLocal<TokenizerME> threadLocalTokenizer;
-    private Detokenizer detokenizer;
-    private SnowballStemmer stemmer;
+    private static ThreadLocal<SnowballStemmer> threadLocalStemmer;
     private AggregateCharSequenceNormalizer normalizer;
+    private Detokenizer detokenizer;
 
-    private Map<Integer, TermOccurrence> termCache;
-    private Map<Integer, DocumentData> docCache;
+    private Cache<Integer, TermOccurrence> termCache;
+    private Cache<Integer, DocumentData> docCache;
 
     private String vecSql;
     private String docSql;
@@ -80,8 +81,8 @@ public class Retrieval {
         this.bm25B = bm25B;
         this.pageRankFactor = pageRankFactor;
 
-        termCache = Collections.synchronizedMap(new Cache<>(TERM_CACHE_SIZE));
-        docCache = Collections.synchronizedMap(new Cache<>(DOC_CACHE_SIZE));
+        termCache = CacheBuilder.newBuilder().maximumSize(TERM_CACHE_SIZE).build();
+        docCache = CacheBuilder.newBuilder().maximumSize(DOC_CACHE_SIZE).build();
 
         logger.info("Initializing retrieval...");
 
@@ -103,7 +104,9 @@ public class Retrieval {
             new NumberCharSequenceNormalizer(),
             new ShrinkCharSequenceNormalizer()
         );
-        stemmer = new SnowballStemmer(SnowballStemmer.ALGORITHM.ENGLISH);
+        threadLocalStemmer = ThreadLocal.withInitial(
+            () -> new SnowballStemmer(SnowballStemmer.ALGORITHM.ENGLISH)
+        );
 
         /** Load config properties file */
         String dbUrl = null;
@@ -153,7 +156,7 @@ public class Retrieval {
 
             docSql = "SELECT d.doc_id, d.length, r.rank " +
                      "FROM \"DocLength\" d " +
-                     "LEFT JOIN \"PageRank\" r on r.doc_id = d.doc_id " +
+                     "JOIN \"PageRank\" r on r.doc_id = d.doc_id " +
                      "WHERE d.doc_id = ANY (?) AND r.rank > " + pageRankThresh;
 
             occSql = "SELECT l.id, l.df, array_agg(p.doc_id), array_agg(p.tf) " +
@@ -184,8 +187,9 @@ public class Retrieval {
     */
     public Map<Integer, Integer> vectorize(String query) throws SQLException {
         String[] tokens = threadLocalTokenizer.get().tokenize(query);
-        Map<String, Integer> termCounts = new HashMap<>();
 
+        SnowballStemmer stemmer = threadLocalStemmer.get();
+        Map<String, Integer> termCounts = new HashMap<>();
         for (String token : tokens) {
             // Normalize
             token = normalizer.normalize(token).toString();
@@ -196,13 +200,12 @@ public class Retrieval {
             token = token.replaceAll("[\u00AD\u2010\u2011\u2012\u2013\u2014\u2212\u2015]", "-"); /* hyphen */
             token = token.trim().toLowerCase();
 
-            // Convert to lowercase and stem
+            // Stem
             token = stemmer.stem(token).toString();
 
             // Remove words that contain whitespace or all punctuations
-            if (token.isBlank() || token.matches(".*\\s.*") || token.matches("\\p{Punct}+")) {
+            if (token.isBlank() || token.matches(".*\\s.*") || token.matches("\\p{Punct}+"))
                 continue;
-            }
 
             // Count unique terms
             Integer count = termCounts.get(token);
@@ -254,8 +257,8 @@ public class Retrieval {
         Set<Integer> termIdsToFetch = new HashSet<>(termVec.keySet());
         // Fetch from cache if present
         termVec.keySet().forEach(termId -> {
-            if (termCache.containsKey(termId)) {
-                TermOccurrence occ = termCache.get(termId);
+            TermOccurrence occ = termCache.getIfPresent(termId);
+            if (occ != null) {
                 occurrences.put(termId, occ);
                 allDocIds.addAll(occ.getDocIds());
                 termIdsToFetch.remove(termId);
@@ -289,8 +292,9 @@ public class Retrieval {
         Set<Integer> docIdsToFetch = new HashSet<>(allDocIds);
         // Fetch from cache if present
         allDocIds.forEach(docId -> {
-            if (docCache.containsKey(docId)) {
-                docData.put(docId, docCache.get(docId));
+            DocumentData data = docCache.getIfPresent(docId);
+            if (data != null) {
+                docData.put(docId, data);
                 docIdsToFetch.remove(docId);
             }
         });
@@ -469,14 +473,14 @@ public class Retrieval {
      *
      * @param text The text to be excerpted.
      * @param positions The positions of the tokens in the text that matched the query.
-     * @param maxTokens The maximum number of tokens to include in the excerpt.
+     * @param excerptSize The maximum number of tokens to include in the excerpt.
      * @return A string of the excerpt with the highlighted words.
      */
-    private String extractExcerpt(String text, Integer[] positions, int maxTokens) {
+    private String extractExcerpt(String text, Integer[] positions, int excerptSize) {
         String[] tokens = threadLocalTokenizer.get().tokenize(text);
 
         int start_pos = Math.max(positions[0] - 5, 0);
-        int end_pos = Math.min(start_pos + maxTokens, tokens.length);
+        int end_pos = Math.min(start_pos + excerptSize, tokens.length);
 
         for (int pos : positions) {
             tokens[pos] = "<span>" + tokens[pos] + "</span>";
