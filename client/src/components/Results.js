@@ -5,19 +5,6 @@ import LinearProgress from '@mui/material/LinearProgress';
 import PropTypes from 'prop-types';
 import getSearchResults from '../apis/getSearchResults';
 
-/*
-const record = {
-  url: 'https://en.wikipedia.org/wiki/Search_engine',
-  baseUrl: 'https://en.wikipedia.org',
-  path: '› wiki › Search_engine',
-  title: 'Search engine - Wikipedia',
-  excerpt:
-    'A <span>search</span> engine is a software system that is designed to carry out web searches. They search the World Wide Web in a systematic way for particular ...',
-};
-
-const data = Array(100).fill(record);
-*/
-
 function Results(props) {
   const { query } = props;
   const [loading, setLoading] = useState(false);
