@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Pagination from '@mui/material/Pagination';
 import Record from './Record';
 import LinearProgress from '@mui/material/LinearProgress';
@@ -27,17 +27,32 @@ function Results(props) {
   const [pageCount, setPageCount] = useState(0);
   const [items, setItems] = useState([]);
 
-  useEffect(() => {
-    async function fetch() {
-      setLoading(true);
-      const data = await getSearchResults(query, page);
-      if (data) {
-        setPageCount(Math.ceil(data.match / pageSize));
-        setItems(data.data);
-      }
-      setLoading(false);
+  const prevQuery = useRef(query);
+
+  async function fetch() {
+    console.log(`fetching page ${page} for query ${query}`);
+    setLoading(true);
+    const data = await getSearchResults(query, page);
+    if (data) {
+      setPageCount(Math.ceil(data.match / pageSize));
+      setItems(data.data);
+    } else {
+      setPageCount(0);
+      setItems([]);
     }
-    fetch();
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    setPage(1);
+  }, [query]);
+
+  useEffect(() => {
+    if (query !== prevQuery.current && page != 1) {
+      prevQuery.current = query;
+    } else {
+      fetch();
+    }
   }, [query, page]);
 
   function handleChange(e, p) {
