@@ -12,7 +12,9 @@ async function getBusinesses(query) {
   }
 
   try {
-    const res2 = await axios.get(`/yelp/${query}/${location}`);
+    const res2 = await axios.get(
+      `http://3.239.191.178:4567/yelp/${query}/${location}`
+    );
     if (res2.status === 200) {
       return res2.data.businesses;
     }
