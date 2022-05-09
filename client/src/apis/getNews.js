@@ -9,6 +9,7 @@ async function getNews(query) {
   } catch (err) {
     console.error(err);
   }
+  return [];
 }
 
 export default getNews;

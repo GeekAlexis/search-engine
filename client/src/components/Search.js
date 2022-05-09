@@ -42,7 +42,7 @@ function Search(props) {
     if (e.key === 'Enter') {
       e.preventDefault();
       if (query.length > 0) {
-        console.log('Enter pressed with query: ', query);
+        // console.log('Enter pressed with query: ', query);
         navigate('/search?q=' + query);
       }
     }
@@ -50,14 +50,14 @@ function Search(props) {
 
   function handleSearch() {
     if (query.length > 0) {
-      console.log('Search clicked with query: ', query);
+      // console.log('Search clicked with query: ', query);
       navigate('/search?q=' + query);
     }
   }
 
   function handleClick(e, value) {
     if (value) {
-      console.log('Option selected with query: ', value);
+      // console.log('Option selected with query: ', value);
       navigate('/search?q=' + value);
     }
   }

@@ -17,7 +17,7 @@ function Results(props) {
   const prevQuery = useRef(query);
 
   async function fetch() {
-    console.log(`fetching page ${page} for query ${query}`);
+    // console.log(`fetching page ${page} for query ${query}`);
     setLoading(true);
     const data = await getSearchResults(query, page);
     if (data) {

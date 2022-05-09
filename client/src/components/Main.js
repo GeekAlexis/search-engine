@@ -8,7 +8,6 @@ import '../styles/Main.css';
 function Main() {
   const [searchParams, setSearchParams] = useSearchParams();
   const q = searchParams.get('q');
-  console.log(q);
 
   return (
     <div className="main">
