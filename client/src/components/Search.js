@@ -48,7 +48,8 @@ function Search(props) {
     }
   }
 
-  function handleSearch() {
+  function handleSearch(e) {
+    e.preventDefault();
     if (query.length > 0) {
       // console.log('Search clicked with query: ', query);
       navigate('/search?q=' + query);
