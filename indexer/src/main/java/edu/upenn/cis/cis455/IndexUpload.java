@@ -165,7 +165,7 @@ public class IndexUpload {
                     System.err.println("Failed to parse line in index file: " + line);
                 }
 
-                if (totalRead % (8 * 1024) == 0) {
+                if (totalRead % (16 * 1024) == 0) {
                     System.out.println("Progress ===> " + String.format("%.3f%%", (double)totalRead / fileSize * 100));
                     pstmtHit.executeLargeBatch();
                     pstmtPosting.executeLargeBatch();
