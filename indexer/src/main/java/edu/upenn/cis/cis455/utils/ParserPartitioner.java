@@ -6,9 +6,9 @@ public class ParserPartitioner extends Partitioner<ParserWritable, ParserWritabl
 
     @Override
     public int getPartition(ParserWritable key, ParserWritable value, int numPartitions) {
-        // return Math.abs(key.getTerm().hashCode() % numPartitions);
-        // Partition by first character of each term
-        return key.getTerm().charAt(0) % numPartitions;
+        // // Partition by first character of each term
+        // return key.getTerm().charAt(0) % numPartitions;
+        return (key.getTerm().hashCode() & Integer.MAX_VALUE) % numPartitions;
     }
     
 }
