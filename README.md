@@ -12,7 +12,9 @@ Document index and metadata are built by distributed crawler/indexer/link analys
 
 ## Extra Credits Claimed
 - Excerpts with highlighted hits are loaded dynamically and shown on the result page.
-- Web UI supports autocomplete and integrates search results from News and Yelp webservices.
+- Web UI integrates search results from News and Yelp webservices.
+- Web UI supports search query autocomplete.
+- Web UI supports loading 10 pages of search results.
 
 ## Tech
 
