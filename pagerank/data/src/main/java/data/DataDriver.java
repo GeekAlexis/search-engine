@@ -29,6 +29,7 @@ public class DataDriver {
     		String input = args[0];
     		String output = args[1];
     		
+    		// Create table in RDS
 			Connection c = connectDB();
 			createTable(c);
 			c.close();
@@ -38,8 +39,16 @@ public class DataDriver {
 			FileSystem fs = FileSystem.get(new URI(output), conf);
 			conf.set("textinputformat.record.delimiter", "::spli75tt.\n");
 			
-			for (int i = 0; i < 10; i++) {
-				String inputfile = input + "/part-r-0000" + Integer.toString(i);
+			// Read each output file from PageRank and create a MapReduce job
+			// to insert PageRank output to RDS
+			for (int i = 0; i < 20; i++) {
+				String inputfile = input;
+				
+				if (i < 10) {
+					inputfile += "/part-r-0000" + Integer.toString(i);
+				} else {
+					inputfile += "/part-r-000" + Integer.toString(i);
+				}
 				
 				// Create job
 				Job job = Job.getInstance(conf);

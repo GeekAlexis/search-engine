@@ -15,6 +15,7 @@ public class DifferenceReducer extends Reducer<Text, DoubleWritable, Text, Doubl
 		try {
 			Double difference = 0.0;
 			
+			// Sum up the values
 			for (DoubleWritable value:values) {
 				double rank = value.get();
 				difference += rank;

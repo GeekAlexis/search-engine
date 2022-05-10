@@ -1,5 +1,14 @@
 # CIS 555 Team Project
 
+## Team members
+
+- Yukai Yang (yukaiy)
+- Yimin Ji (sylviaji)
+- Hongyu Zhang (hz53)
+- Yuchen Ding (ycding)
+
+## Extra credits claimed
+
 Our search engine is highly optimized with server-side caching and concurrent query support.
 Document ranking incorporates BM25 and PageRank for high-quality retrieval.
 Excerpts with highlighted hits are loaded dynamically and shown on the result page.
@@ -14,6 +23,8 @@ Document index and metadata are built by distributed crawler/indexer/link analys
 - [News API](https://newsapi.org/)
 - [Yelp Fushion API](https://www.yelp.com/developers/documentation/v3/get_started)
 - [IP Geolocation API](https://ip-api.com/)
+- [JDBC Driver](https://mvnrepository.com/artifact/org.postgresql/postgresql)
+- [Jsoup](https://mvnrepository.com/artifact/org.jsoup/jsoup)
 
 ## Quick Start
 
@@ -46,15 +57,9 @@ npm start
 ```
 
 ## Precomputed Components
-
+Below are the README of each precomputed compoenents, which describes the features implemented, the source files included, and the instructions on how to install and run.
 - [Indexer](indexer/README.md)
-- [PageRank](pagerank/pagerank/README.md)
-- [Weblinkgraph](pagerank/weblinkgraph/README.md)
+- [PageRank](pagerank/README.md)
 - [Crawler](crawler/README.md)
 
-## Team members
 
-- Yukai Yang (yukaiy)
-- Yimin Ji (sylviaji)
-- Hongyu Zhang (hz53)
-- Yuchen Ding (ycding)

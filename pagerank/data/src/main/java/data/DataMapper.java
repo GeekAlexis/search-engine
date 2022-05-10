@@ -57,6 +57,7 @@ public class DataMapper extends Mapper<LongWritable, Text, Text, Text> {
 
 			ResultSet rs = stmt.executeQuery(sql);
 			
+			// Insert data to the table
 			String sql2 = "INSERT INTO \"PageRank\" (doc_id, rank) VALUES (?,?) ON CONFLICT (doc_id) DO NOTHING;";
 			PreparedStatement pst = c.prepareStatement(sql2);
 						

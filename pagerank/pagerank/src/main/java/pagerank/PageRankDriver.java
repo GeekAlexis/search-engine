@@ -42,7 +42,7 @@ public class PageRankDriver {
 				
 				// Create job
 				Job job = Job.getInstance(conf);
-				job.setNumReduceTasks(10);
+				job.setNumReduceTasks(20);
 				job.setJobName("PageRank");
 				job.setJarByClass(PageRankDriver.class);
 				job.setMapperClass(PageRankMapper.class);

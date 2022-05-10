@@ -44,6 +44,7 @@ public class DifferenceDriver {
 			job.setOutputKeyClass(Text.class);
 			job.setOutputValueClass(DoubleWritable.class);
 			
+			// One mapper for the current iteration, one mapper for the previous iteration
 			MultipleInputs.addInputPath(job, new Path(input1), TextInputFormat.class, PrevDifferenceMapper.class);
 			MultipleInputs.addInputPath(job, new Path(input2), TextInputFormat.class, CurrentDifferenceMapper.class);
 			
