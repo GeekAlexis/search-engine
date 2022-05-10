@@ -12,4 +12,11 @@ for data transferring between storage; and the stormlite package includes the co
 This subproject is built by Maven with two execuations, crawler and download. The first one is for crawling, and
 the second one is only for data transferring purpose.
 
-All specifications are satisfied.
+All specifications are satisfied, and all features are implemented.
+
+Source files: StormLite and MapReduce from HW, postgresql JDBC, AWS JDK
+
+Instruction within crawler folder:
+mvn clean install
+mvn exec:java@crawler
+
