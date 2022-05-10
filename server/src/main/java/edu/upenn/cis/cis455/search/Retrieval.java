@@ -17,6 +17,7 @@ import java.util.Set;
 import java.util.Queue;
 import java.util.Properties;
 import java.util.stream.Collectors;
+import java.util.concurrent.ConcurrentHashMap;
 import java.net.URL;
 import java.net.MalformedURLException;
 import java.text.Normalizer;
@@ -53,7 +54,7 @@ public class Retrieval {
     private static final Logger logger = LogManager.getLogger(Retrieval.class);
 
     private static final int TERM_CACHE_SIZE = 5000;
-    private static final int DOC_CACHE_SIZE = 200000;
+    private static final int DOC_CACHE_SIZE = 500000;
 
     private HikariDataSource ds;
 
@@ -72,6 +73,7 @@ public class Retrieval {
 
     private double bm25K;
     private double bm25B;
+    private double pageRankThresh;
     private double pageRankFactor;
     private int n;
     private double avgDl;
@@ -79,6 +81,7 @@ public class Retrieval {
     public Retrieval(double bm25K, double bm25B, double pageRankThresh, double pageRankFactor) {
         this.bm25K = bm25K;
         this.bm25B = bm25B;
+        this.pageRankThresh = pageRankThresh;
         this.pageRankFactor = pageRankFactor;
 
         termCache = CacheBuilder.newBuilder().maximumSize(TERM_CACHE_SIZE).build();
@@ -157,7 +160,7 @@ public class Retrieval {
             docSql = "SELECT d.doc_id, d.length, r.rank " +
                      "FROM \"DocLength\" d " +
                      "JOIN \"PageRank\" r on r.doc_id = d.doc_id " +
-                     "WHERE d.doc_id = ANY (?) AND r.rank > " + pageRankThresh;
+                     "WHERE d.doc_id = ANY (?)";
 
             occSql = "SELECT l.id, l.df, array_agg(p.doc_id), array_agg(p.tf) " +
                      "FROM \"Lexicon\" l " +
@@ -165,7 +168,7 @@ public class Retrieval {
                      "WHERE l.id = ANY (?) " +
                      "GROUP BY l.id, l.df";
 
-            metaSql = "SELECT d.id, d.url, d.content, array_agg(h.position order by h.position) " +
+            metaSql = "SELECT d.id, d.url, d.content, array_agg(distinct(h.position) order by h.position) " +
                       "FROM \"ForwardIndex\" f " +
                       "JOIN \"Hit\" h ON h.id >= f.hit_id_offset AND h.id < f.hit_id_offset + f.n_hit " +
                       "JOIN \"Document\" d ON d.id = f.doc_id " +
@@ -310,14 +313,21 @@ public class Retrieval {
                 docCache.put(docId, data); // update cache
             }
         }
-        logger.debug("Ranking {} after filtering", docData.size());
         watch.stop();
 
         watch.start("BM25 & sort topK");
-        /** Compute BM25 for each term */    
-        Map<Integer, Double> bm25Vector = new HashMap<>();
-        docData.keySet().forEach(docId -> bm25Vector.put(docId, 0.)); // init bm25 to 0
-        for (var entry : occurrences.entrySet()) {
+        /** Compute BM25 for each term in parallel */
+        Map<Integer, Double> bm25Vector = new ConcurrentHashMap<>();
+        // Initialize BM25 to 0
+        docData.forEach((docId, data) -> {
+            // Filter documents with low PageRank
+            if (data.getPageRank() > pageRankThresh) {
+                bm25Vector.put(docId, 0.);
+            }
+        });
+
+        logger.debug("Ranking {} after filtering", bm25Vector.size());
+        occurrences.entrySet().parallelStream().forEach(entry -> {
             int termId = entry.getKey();
             TermOccurrence occurrence = entry.getValue();
 
@@ -328,15 +338,14 @@ public class Retrieval {
 
             for (int i = 0; i < docIds.size(); i++) {
                 int docId = docIds.get(i);
-                // documents with extremely low PageRank are filtered
-                if (docData.containsKey(docId)) {
+                if (bm25Vector.containsKey(docId)) {
                     double bm25 = computeBM25(tfs.get(i), df, docData.get(docId).getDl());
                     bm25Vector.put(docId, bm25Vector.get(docId) + bm25 * count);
                 }
             }
-        }
-        
-        /** Combine bm25 and PageRank, keep top K */
+        });
+
+        /** Combine bm25 and PageRank, rank top K */
         Queue<RankScore> topkHeap = new PriorityQueue<>();
         bm25Vector.forEach((docId, bm25) -> {
             double pageRank = docData.get(docId).getPageRank();

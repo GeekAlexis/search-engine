@@ -23,10 +23,10 @@ import org.apache.logging.log4j.Logger;
 public class SearchHandler implements Route {
 	private static final Logger logger = LogManager.getLogger(SearchHandler.class);
 
-	private static final double BM25_K = 2.0;
+	private static final double BM25_K = 1.2;
 	private static final double BM25_B = 0.75;
-	private static final double PAGERANK_THRESH = 0.2;
-	private static final double PAGERANK_FACTOR = 1.0;
+	private static final double PAGERANK_THRESH = 0.16;
+	private static final double PAGERANK_FACTOR = 0.5;
 	private static final int TOPK = 100;
 	private static final int PAGE_SIZE = 10;
 	private static final int EXCERPT_SIZE = 30;
