@@ -57,7 +57,8 @@ npm start
 ```
 
 ## Precomputed Components
-Below are the README of each precomputed compoenents, which describes the features implemented, the source files included, and the instructions on how to install and run.
+Below are the README of each precomputed compoenents, which describes the features implemented, the source files included, and the instructions on how to install and run.         
+
 - [Indexer](indexer/README.md)
 - [PageRank](pagerank/README.md)
 - [Crawler](crawler/README.md)
