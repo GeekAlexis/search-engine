@@ -1,4 +1,7 @@
 # CIS 555 Team Project
+Our search engine is highly optimized with server-side caching and concurrent query support.
+Document ranking incorporates BM25 and PageRank for high-quality retrieval.
+Document index and metadata are built by distributed crawler/indexer/link analysis and stored in RDS (PostgreSQL).
 
 ## Team members
 
@@ -7,24 +10,23 @@
 - Hongyu Zhang (hz53)
 - Yuchen Ding (ycding)
 
-## Extra credits claimed
-
-Our search engine is highly optimized with server-side caching and concurrent query support.
-Document ranking incorporates BM25 and PageRank for high-quality retrieval.
-Excerpts with highlighted hits are loaded dynamically and shown on the result page.
-Web UI supports autocomplete and integrates search results from News and Yelp webservices.
-Document index and metadata are built by distributed crawler/indexer/link analysis and stored in RDS (PostgreSQL).
+## Extra Credits Claimed
+- Excerpts with highlighted hits are loaded dynamically and shown on the result page.
+- Web UI supports autocomplete and integrates search results from News and Yelp webservices.
 
 ## Tech
 
 - [ReactJS](https://reactjs.org/)
 - [MUI](https://mui.com/)
-- [Spark Java](https://sparkjava.com/)
 - [News API](https://newsapi.org/)
 - [Yelp Fushion API](https://www.yelp.com/developers/documentation/v3/get_started)
 - [IP Geolocation API](https://ip-api.com/)
-- [JDBC Driver](https://mvnrepository.com/artifact/org.postgresql/postgresql)
+- [Spark Java](https://sparkjava.com/)
+- [JDBC](https://mvnrepository.com/artifact/org.postgresql/postgresql)
+- [HikariCP](https://github.com/brettwooldridge/HikariCP)
 - [Jsoup](https://mvnrepository.com/artifact/org.jsoup/jsoup)
+- [Guava](https://mvnrepository.com/artifact/com.google.guava/guava)
+- [OpenNLP](https://opennlp.apache.org)
 
 ## Quick Start
 
@@ -57,7 +59,7 @@ npm start
 ```
 
 ## Precomputed Components
-Below are the README of each precomputed components, which describes the features implemented, the source files included, and the instructions on how to install and run.         
+See READMEs below for implemented features, source files, and instructions of each component.
 
 - [Indexer](indexer/README.md)
 - [PageRank](pagerank/README.md)
