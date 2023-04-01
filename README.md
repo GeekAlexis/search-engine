@@ -5,7 +5,7 @@ Document index and metadata are built by distributed crawler/indexer/link analys
 
 <img src="architecture.png" width="800"/>
 
-See [report](report.pdf) for system design and performance evaluations.
+See [report](report.pdf) for system design, performance evaluations, and search demo.
 
 ## Team members
 
