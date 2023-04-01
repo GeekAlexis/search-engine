@@ -1,4 +1,4 @@
-package edu.upenn.cis.cis455;
+package indexer;
 
 import java.io.File;
 import java.io.FileReader;
