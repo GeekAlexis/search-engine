@@ -7,22 +7,18 @@ By default, top 100 ranked results are returned for each query. Because extracti
 ```
 src/main
 ├── java
-│   └── edu
-│       └── upenn
-│           └── cis
-│               └── cis455
-│                   ├── Server.java
-│                   ├── handlers
-│                   │   ├── NewsHandler.java
-│                   │   ├── SearchHandler.java
-│                   │   └── YelpHandler.java
-│                   └── search
-│                       ├── DocumentData.java
-│                       ├── RankScore.java
-│                       ├── Retrieval.java
-│                       ├── RetrievalResult.java
-│                       ├── TermOccurrence.java
-│                       └── TokenizerConfig.java
+│   └── server
+│       ├── handlers
+│       │   ├── NewsHandler.java
+│       │   ├── SearchHandler.java
+│       │   └── YelpHandler.java
+│       └── search
+│           ├── DocumentData.java
+│           ├── RankScore.java
+│           ├── Retrieval.java
+│           ├── RetrievalResult.java
+│           ├── TermOccurrence.java
+│           └── TokenizerConfig.java
 └── resources
     ├── config.properties
     └── log4j2.yaml

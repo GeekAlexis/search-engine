@@ -12,25 +12,22 @@ An additional forward index table is created from the inverted tables using Post
 ```
 src/main
 ├── java
-│   └── edu
-│       └── upenn
-│           └── cis
-│               └── cis455
-│                   ├── IndexDriver.java
-│                   ├── IndexUpload.java
-│                   ├── Inverter.java
-│                   ├── Parser.java
-│                   ├── storage
-│                   │   ├── HitList.java
-│                   │   ├── StorageFactory.java
-│                   │   ├── StorageImpl.java
-│                   │   └── StorageInterface.java
-│                   └── utils
-│                       ├── ParserGroupingComparator.java
-│                       ├── ParserPartitioner.java
-│                       ├── ParserWritable.java
-│                       ├── WholeFileInputFormat.java
-│                       └── WholeFileRecordReader.java
+│   └── indexer  
+│       ├── IndexDriver.java
+│       ├── IndexUpload.java
+│       ├── Inverter.java
+│       ├── Parser.java
+│       ├── storage
+│       │   ├── HitList.java
+│       │   ├── StorageFactory.java
+│       │   ├── StorageImpl.java
+│       │   └── StorageInterface.java
+│       └── utils
+│           ├── ParserGroupingComparator.java
+│           ├── ParserPartitioner.java
+│           ├── ParserWritable.java
+│           ├── WholeFileInputFormat.java
+│           └── WholeFileRecordReader.java
 └── resources
     ├── config.properties
     └── log4j2.yaml
