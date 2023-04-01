@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
   <modelVersion>4.0.0</modelVersion>
-  <groupId>edu.upenn.cis455</groupId>
+  <groupId>edu.upenn.cis.cis455</groupId>
   <artifactId>indexer</artifactId>
   <name>CIS 455 Indexer</name>
   <version>1.0-SNAPSHOT</version>
@@ -22,7 +22,7 @@
                 <manifest>
                   <addClasspath>true</addClasspath>
                   <classpathPrefix>lib/</classpathPrefix>
-                  <mainClass>edu.upenn.cis455.IndexDriver</mainClass>
+                  <mainClass>indexer.IndexDriver</mainClass>
                 </manifest>
               </archive>
             </configuration>
@@ -46,7 +46,7 @@
               <goal>java</goal>
             </goals>
             <configuration>
-              <mainClass>edu.upenn.cis455.IndexDriver</mainClass>
+              <mainClass>indexer.IndexDriver</mainClass>
               <arguments>
                 <argument>s3://indexer-mapreduce/in/</argument>
                 <argument>s3://indexer-mapreduce/out/</argument>
@@ -60,7 +60,7 @@
               <goal>java</goal>
             </goals>
             <configuration>
-              <mainClass>edu.upenn.cis455.IndexUploader</mainClass>
+              <mainClass>indexer.IndexUploader</mainClass>
               <arguments>
                 <argument>indexer-mapreduce</argument>
                 <argument>merged-index</argument>
@@ -70,7 +70,7 @@
           </execution>
         </executions>
         <configuration>
-          <mainClass>edu.upenn.cis455.WebInterface</mainClass>
+          <mainClass>indexer.WebInterface</mainClass>
           <arguments>
             <argument>45555</argument>
           </arguments>

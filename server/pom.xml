@@ -140,12 +140,12 @@
                                 <goal>java</goal>
                             </goals>
                             <configuration>
-                                <mainClass>edu.upenn.cis.cis455.search.Retrieval</mainClass>
+                                <mainClass>server.search.Retrieval</mainClass>
                             </configuration>
 					    </execution>
                     </executions>
                     <configuration>
-                        <mainClass>edu.upenn.cis.cis455.Server</mainClass>
+                        <mainClass>server.Server</mainClass>
                         <arguments>
                             <argument>4567</argument>
                         </arguments>

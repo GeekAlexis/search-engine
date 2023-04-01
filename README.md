@@ -1,7 +1,8 @@
-# CIS 555 Team Project
+# Distributed Search Engine
 Our search engine is highly optimized with server-side caching and concurrent query support.
 Document ranking incorporates BM25 and PageRank for high-quality retrieval.
 Document index and metadata are built by distributed crawler/indexer/link analysis and stored in RDS (PostgreSQL).
+See [report](report.pdf) for system design and performance evaluations.
 
 ## Team members
 
@@ -10,7 +11,7 @@ Document index and metadata are built by distributed crawler/indexer/link analys
 - Hongyu Zhang (hz53)
 - Yuchen Ding (ycding)
 
-## Extra Credits Claimed
+## Extra Features
 - Excerpts with highlighted hits are loaded dynamically and shown on the result page.
 - Web UI integrates search results from News and Yelp webservices.
 - Web UI supports search query autocomplete.
