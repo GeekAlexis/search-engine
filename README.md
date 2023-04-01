@@ -2,6 +2,9 @@
 Our search engine is highly optimized with server-side caching and concurrent query support.
 Document ranking incorporates BM25 and PageRank for high-quality retrieval.
 Document index and metadata are built by distributed crawler/indexer/link analysis and stored in RDS (PostgreSQL).
+
+<img src="architecture.png" width="800"/>
+
 See [report](report.pdf) for system design and performance evaluations.
 
 ## Team members
