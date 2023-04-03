@@ -1,18 +1,13 @@
 # Distributed Search Engine
-Our search engine is highly optimized with server-side caching and concurrent query support.
-Document ranking incorporates BM25 and PageRank for high-quality retrieval.
-Document index and metadata are built by distributed crawler/indexer/link analysis and stored in RDS (PostgreSQL).
+A search engine powered by AWS. The design and search algorithms are partially based on Goolge, circa 1998.
+- Supports server-side caching and concurrent queries
+- Retrieval and ranking incorporates BM25 and PageRank
+- Distributed crawler/indexer/link analysis for computing document index and metadata
+- Search server utilizes RDS (PostgreSQL) for storage 
 
 <img src="architecture.png" width="800"/>
 
-See [report](report.pdf) for system design, performance evaluations, and search demo.
-
-## Team members
-
-- Yukai Yang (yukaiy)
-- Yimin Ji (sylviaji)
-- Hongyu Zhang (hz53)
-- Yuchen Ding (ycding)
+See our [technical report](report.pdf) for system design, scalability, and search demo.
 
 ## Extra Features
 - Excerpts with highlighted hits are loaded dynamically and shown on the result page.
