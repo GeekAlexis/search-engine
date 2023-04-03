@@ -1,5 +1,5 @@
 # Distributed Search Engine
-A search engine powered by AWS. The design and search algorithms are partially based on Goolge, circa 1998.
+A search engine powered by AWS. The design and search algorithms are partially based on Google, circa 1998.
 - Supports server-side caching and concurrent queries
 - Retrieval and ranking incorporates BM25 and PageRank
 - Distributed crawler/indexer/link analysis for computing document index and metadata
