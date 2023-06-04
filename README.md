@@ -6,7 +6,7 @@ A search engine partially based on Google, circa 1998.
 - Distributed crawler/indexer/link analysis for computing document index and metadata
 - A RESTful server that supports server-side caching and concurrent queries
 
-<img src="architecture.png" width="600"/>
+<img src="architecture.png" width="700"/>
 
 See our [technical report](report.pdf) for system design, scalability, and more search demos.
 
