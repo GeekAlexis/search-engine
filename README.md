@@ -1,12 +1,14 @@
 # Distributed Search Engine
 A search engine partially based on Google, circa 1998.
+<img src="demo.png" width="1000"/>
+
 - Retrieval and ranking incorporates BM25 and PageRank
 - Distributed crawler/indexer/link analysis for computing document index and metadata
 - A RESTful server that supports server-side caching and concurrent queries
 
-<img src="architecture.png" width="800"/>
+<img src="architecture.png" width="600"/>
 
-See our [technical report](report.pdf) for system design, scalability, and search demo.
+See our [technical report](report.pdf) for system design, scalability, and more search demos.
 
 ## Extra Features
 - Excerpts with highlighted hits are loaded dynamically and shown on the result page.
